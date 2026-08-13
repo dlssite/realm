@@ -1,6 +1,7 @@
-import { API_BASE } from '@/lib/api';
+﻿import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import Editor from '../components/Editor';
 import SidebarTree from '../components/SidebarTree';
 import TemplateModal, { WikiTemplateItem } from '../components/TemplateModal';
@@ -40,6 +41,7 @@ const VISIBILITY_OPTIONS: { value: WikiVisibility; label: string }[] = [
 const ROLE_OPTIONS = ['OWNER', 'ADMIN', 'MANAGER', 'MEMBER', 'GUEST'];
 
 export default function WikiPage() {
+  const { toast } = useToast();
   const { workspace, token } = useAuthStore();
   const [pages, setPages] = useState<WikiPageItem[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
@@ -116,7 +118,7 @@ export default function WikiPage() {
     const text = await res.text();
     if (!res.ok) {
       console.error('Create wiki page failed', res.status, text);
-      alert(`Create wiki page failed: ${res.status}`);
+      toast.error('Failed to create page', `Status ${res.status}`);
       return null;
     }
     try {
@@ -125,7 +127,7 @@ export default function WikiPage() {
       return data;
     } catch (err) {
       console.error('Invalid JSON response creating page', text);
-      alert('Create wiki page succeeded but response invalid');
+      toast.warning('Page created', 'Response could not be parsed.');
       await fetchPages();
       return null;
     }
@@ -192,7 +194,7 @@ export default function WikiPage() {
 
   const handleCreate = async (title = 'Untitled Document', createParentId: string | null = parentId) => {
     if (isVisibilityTargetMissing) {
-      alert(visibilityWarningMessage);
+      toast.warning('Missing required field', visibilityWarningMessage);
       return;
     }
 
@@ -279,11 +281,11 @@ export default function WikiPage() {
     if (!res.ok) {
       const text = await res.text();
       console.error('Save template failed', res.status, text);
-      alert(`Save template failed: ${res.status}`);
+      toast.error('Failed to save template', `Status ${res.status}`);
       return;
     }
     await fetchTemplates();
-    alert('Template saved to workspace');
+    toast.success('Template saved', 'Template is now available workspace-wide.');
   };
 
   const handleMovePage = async (pageId: string, newParentId: string | null) => {
@@ -320,7 +322,7 @@ export default function WikiPage() {
     if (!res.ok) {
       const text = await res.text();
       console.error('Delete page failed', res.status, text);
-      alert('Failed to delete page');
+      toast.error('Failed to delete page');
       return;
     }
 
@@ -343,7 +345,7 @@ export default function WikiPage() {
   const handleSave = async (content: any) => {
     if (!selectedPageId) return;
     if (isVisibilityTargetMissing) {
-      alert(visibilityWarningMessage);
+      toast.warning('Missing required field', visibilityWarningMessage);
       return;
     }
 
@@ -409,7 +411,7 @@ export default function WikiPage() {
     if (!res.ok) {
       const text = await res.text();
       console.error('Restore version failed', res.status, text);
-      alert(`Restore failed: ${res.status}`);
+      toast.error('Restore failed', `Status ${res.status}`);
       return;
     }
     if (selectedPageId) selectPage(selectedPageId);

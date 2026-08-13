@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import { useAuthStore } from './app/stores/auth.store';
+import { ToastProvider } from './shared/components/toast';
 
 export function App() {
   const rehydrateAuth = useAuthStore((s) => s.rehydrateAuth);
@@ -25,5 +26,10 @@ export function App() {
     );
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastProvider />
+    </>
+  );
 }
