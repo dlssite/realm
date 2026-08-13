@@ -4,6 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "composite": false,
+    "module": "CommonJS",
     "moduleResolution": "node"
   },
   "include": ["src/**/*"]
