@@ -44,6 +44,12 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      # Tell MinIO its public-facing URL so presigned URLs it generates
+      # internally (e.g. for console) use the right host.
+      # Also required so MinIO accepts incoming requests whose Host header
+      # is the public domain forwarded by Caddy.
+      MINIO_SERVER_URL: ${MINIO_PUBLIC_URL:-https://${REALM_DOMAIN}/storage}
+      MINIO_BROWSER_REDIRECT_URL: https://${REALM_DOMAIN:-localhost}
     volumes:
       - minio_data:/data
     healthcheck:

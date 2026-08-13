@@ -53,11 +53,18 @@
     }
 
     # ── MinIO presigned upload pass-through ───────────────────────────────────
-    # Presigned URLs point directly at MinIO; expose on /storage/* in production
-    # so the browser uploads to the same origin (avoids CORS).
+    # Presigned URLs point to /storage/* on this domain.
+    # Caddy strips the /storage prefix and forwards to MinIO.
+    # header_up Host overrides the forwarded Host so MinIO sees its own
+    # internal name and doesn't reject the request.
     handle /storage/* {
         uri strip_prefix /storage
-        reverse_proxy minio:9000
+        reverse_proxy minio:9000 {
+            header_up Host minio:9000
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     # ── Frontend SPA ─────────────────────────────────────────────────────────
