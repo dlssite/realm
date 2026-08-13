@@ -492,8 +492,10 @@ export default function SettingsPage() {
 
                       {/* Avatar + name/email */}
                       <div className="flex items-center space-x-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-[#27272a] flex items-center justify-center font-bold text-xs text-[#a1a1aa] shrink-0">
-                          {initials}
+                        <div className="w-8 h-8 rounded-full bg-[#27272a] flex items-center justify-center font-bold text-xs text-[#a1a1aa] shrink-0 overflow-hidden">
+                          {member.user.avatarUrl
+                            ? <img src={member.user.avatarUrl} alt={member.user.name} className="w-full h-full object-cover" />
+                            : initials}
                         </div>
                         <div className="min-w-0">
                           <span className="font-semibold text-sm block truncate">

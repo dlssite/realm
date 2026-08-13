@@ -198,9 +198,11 @@ export function EventDetailModal({
                   <div key={att.user.id} className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {/* Mini avatar */}
-                      <span className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] text-[9px] font-semibold flex items-center justify-center flex-shrink-0">
-                        {att.user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
-                      </span>
+                      <div className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] text-[9px] font-semibold flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {att.user.avatarUrl
+                          ? <img src={att.user.avatarUrl} alt={att.user.name} className="w-full h-full object-cover" />
+                          : att.user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                      </div>
                       <span className="text-xs text-[#a1a1aa] truncate">
                         {att.user.name}
                         {att.user.id === entry.createdById && (

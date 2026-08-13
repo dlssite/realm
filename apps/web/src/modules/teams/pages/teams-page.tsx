@@ -307,9 +307,11 @@ export default function TeamsPage() {
                       <div
                         key={m.id}
                         title={m.user.name}
-                        className="w-6 h-6 rounded-full bg-[#27272a] border border-[#0c0c0e] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                        className="w-6 h-6 rounded-full bg-[#27272a] border border-[#0c0c0e] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden"
                       >
-                        {m.user.name[0]}
+                        {m.user.avatarUrl
+                          ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                          : m.user.name[0]}
                       </div>
                     ))}
                     {team.members.length > 5 && (
@@ -516,8 +518,10 @@ export default function TeamsPage() {
                     return (
                       <div key={m.id} className="p-3 flex items-center justify-between text-xs gap-2">
                         <div className="flex items-center space-x-3 min-w-0">
-                          <div className="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center font-bold text-[11px] text-white flex-shrink-0">
-                            {m.user.name[0]}
+                          <div className="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center font-bold text-[11px] text-white flex-shrink-0 overflow-hidden">
+                            {m.user.avatarUrl
+                              ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                              : m.user.name[0]}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center flex-wrap gap-1.5">

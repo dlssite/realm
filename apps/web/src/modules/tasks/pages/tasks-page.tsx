@@ -428,7 +428,11 @@ export default function TasksPage() {
                           <td className="px-4 py-3">
                             {task.assignee ? (
                               <div className="flex items-center space-x-1.5">
-                                <div className="w-5 h-5 rounded-full bg-[#27272a] flex items-center justify-center text-[10px] font-bold text-white">{task.assignee.name[0]}</div>
+                                <div className="w-5 h-5 rounded-full bg-[#27272a] flex items-center justify-center text-[10px] font-bold text-white overflow-hidden shrink-0">
+                                  {task.assignee.avatarUrl
+                                    ? <img src={task.assignee.avatarUrl} alt={task.assignee.name} className="w-full h-full object-cover" />
+                                    : task.assignee.name[0]}
+                                </div>
                                 <span className="text-xs text-[#a1a1aa]">{task.assignee.name}</span>
                               </div>
                             ) : <span className="text-xs text-[#52525b]">Unassigned</span>}
@@ -493,7 +497,11 @@ export default function TasksPage() {
                     <span className={`text-[10px] font-semibold ${PRIORITY_BADGE[task.priority]}`}>{task.priority}</span>
                     {task.assignee && (
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full bg-[#27272a] flex items-center justify-center text-[9px] font-bold text-white">{task.assignee.name[0]}</div>
+                        <div className="w-4 h-4 rounded-full bg-[#27272a] flex items-center justify-center text-[9px] font-bold text-white overflow-hidden shrink-0">
+                          {task.assignee.avatarUrl
+                            ? <img src={task.assignee.avatarUrl} alt={task.assignee.name} className="w-full h-full object-cover" />
+                            : task.assignee.name[0]}
+                        </div>
                         <span className="text-[10px] text-[#a1a1aa]">{task.assignee.name}</span>
                       </div>
                     )}
@@ -558,8 +566,10 @@ export default function TasksPage() {
                             />
                           ))}
                           {task.assignee && (
-                            <div className="w-4 h-4 rounded-full bg-[#27272a] flex items-center justify-center text-[9px] font-bold text-white">
-                              {task.assignee.name[0]}
+                            <div className="w-4 h-4 rounded-full bg-[#27272a] flex items-center justify-center text-[9px] font-bold text-white overflow-hidden shrink-0">
+                              {task.assignee.avatarUrl
+                                ? <img src={task.assignee.avatarUrl} alt={task.assignee.name} className="w-full h-full object-cover" />
+                                : task.assignee.name[0]}
                             </div>
                           )}
                         </div>
