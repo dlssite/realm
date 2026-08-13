@@ -114,7 +114,7 @@ export function ProfilePage() {
       const next = { ...user };
       if (newAvatarUrl != null) next.avatarUrl = newAvatarUrl;
       else delete next.avatarUrl;
-      setAuth(next, workspace, token);
+      setAuth(next, workspace, token!);
     }
     toast.success(newAvatarUrl ? 'Avatar updated' : 'Avatar removed');
   };

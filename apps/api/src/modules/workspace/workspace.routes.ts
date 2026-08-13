@@ -140,6 +140,164 @@ export async function workspaceRoutes(fastify: FastifyInstance) {
     return reply.send(members);
   });
 
+  // ── GET /:workspaceId/members/:userId/card ───────────────────────────────
+  // Returns a rich profile card payload for a single workspace member:
+  //   • user basics (name, email, avatarUrl)
+  //   • workspace role + join date
+  //   • teams they belong to (with leader flag)
+  //   • projects they are a member of (with their project role)
+  //   • assigned tasks summary (up to 5 active, counts by status)
+  // Available to any workspace member — the data is non-sensitive.
+  fastify.get('/:workspaceId/members/:userId/card', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, userId } = request.params as { workspaceId: string; userId: string };
+
+    // Caller must be a workspace member
+    const callerMembership = await getWorkspaceMembership(workspaceId, request.user!.id);
+    if (!callerMembership) {
+      return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Not a member of this workspace' } });
+    }
+
+    // Load the target member
+    const wsMember = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, createdAt: true } } },
+    });
+    if (!wsMember) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Member not found in this workspace' } });
+    }
+
+    // Teams
+    const teamMemberships = await prisma.teamMember.findMany({
+      where: { userId },
+      include: {
+        team: { select: { id: true, name: true, leaderId: true } },
+      },
+    });
+    // Only include teams that belong to this workspace
+    const workspaceTeamIds = await prisma.team.findMany({
+      where: { workspaceId },
+      select: { id: true },
+    });
+    const wsTeamIdSet = new Set(workspaceTeamIds.map(t => t.id));
+    const teams = teamMemberships
+      .filter(tm => wsTeamIdSet.has(tm.team.id))
+      .map(tm => ({
+        id: tm.team.id,
+        name: tm.team.name,
+        isLeader: tm.team.leaderId === userId,
+      }));
+
+    // Projects — three sources merged, sorted by priority, capped at 2:
+    //  1. Explicit ProjectMember rows (any project in this workspace)
+    //  2. Team-based access — projects owned by user's teams
+    //  3. If user is OWNER/ADMIN/MANAGER, they can access ALL workspace projects
+    const STATUS_PRIORITY: Record<string, number> = {
+      ACTIVE: 0, PLANNED: 1, PAUSED: 2, COMPLETED: 3, CANCELLED: 4,
+    };
+
+    const [projectMemberships, teamProjects, allWsProjects] = await Promise.all([
+      // 1. Explicit membership (covers both team-owned and standalone projects)
+      prisma.projectMember.findMany({
+        where: { userId, project: { workspaceId, deletedAt: null } },
+        select: {
+          role: true,
+          project: { select: { id: true, name: true, identifier: true, status: true, updatedAt: true } },
+        },
+      }),
+      // 2. Projects owned by the user's teams (team membership = implicit access)
+      teams.length > 0
+        ? prisma.project.findMany({
+            where: { workspaceId, deletedAt: null, teamId: { in: teams.map(t => t.id) } },
+            select: { id: true, name: true, identifier: true, status: true, updatedAt: true },
+          })
+        : Promise.resolve([]),
+      // 3. All workspace projects for OWNER / ADMIN / MANAGER (they see everything)
+      ['OWNER', 'ADMIN', 'MANAGER'].includes(wsMember.role)
+        ? prisma.project.findMany({
+            where: { workspaceId, deletedAt: null },
+            select: { id: true, name: true, identifier: true, status: true, updatedAt: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Merge into a Map keyed by project id — explicit membership wins for role label
+    const projectMap = new Map<string, {
+      id: string; name: string; identifier: string;
+      status: string; role: string; updatedAt: Date;
+    }>();
+
+    for (const p of allWsProjects) {
+      projectMap.set(p.id, { ...p, role: 'MEMBER' });
+    }
+    for (const p of teamProjects) {
+      projectMap.set(p.id, { ...p, role: 'MEMBER' });
+    }
+    for (const pm of projectMemberships) {
+      projectMap.set(pm.project.id, { ...pm.project, role: pm.role });
+    }
+
+    // Sort: ACTIVE first, then PLANNED, then rest — within same status sort by most recently updated
+    const allProjectsSorted = Array.from(projectMap.values())
+      .sort((a, b) => {
+        const sd = (STATUS_PRIORITY[a.status] ?? 5) - (STATUS_PRIORITY[b.status] ?? 5);
+        if (sd !== 0) return sd;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
+    const totalProjects = allProjectsSorted.length;
+    const projects = allProjectsSorted
+      .slice(0, 2)  // show top 2
+      .map(({ updatedAt: _u, ...rest }) => rest); // strip internal field before sending
+
+    // Assigned tasks — active only (not DONE / CANCELLED), capped at 5 for the card
+    const assignedTasks = await prisma.task.findMany({
+      where: {
+        workspaceId,
+        assigneeId: userId,
+        deletedAt: null,
+        status: { notIn: ['DONE', 'CANCELLED'] },
+      },
+      select: { id: true, identifier: true, title: true, status: true, priority: true, dueDate: true, projectId: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+    });
+
+    // Task count by status (all, including DONE/CANCELLED)
+    const taskCountsByStatus = await prisma.task.groupBy({
+      by: ['status'],
+      where: { workspaceId, assigneeId: userId, deletedAt: null },
+      _count: { _all: true },
+    });
+    const taskCounts = taskCountsByStatus.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = row._count._all;
+      return acc;
+    }, {});
+
+    return reply.send({
+      user: {
+        id: wsMember.user.id,
+        name: wsMember.user.name,
+        email: wsMember.user.email,
+        avatarUrl: wsMember.user.avatarUrl,
+      },
+      workspaceRole: wsMember.role,
+      joinedAt: wsMember.createdAt.toISOString(),
+      teams,
+      projects,
+      totalProjects,
+      assignedTasks: assignedTasks.map(t => ({
+        id: t.id,
+        identifier: t.identifier,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        dueDate: t.dueDate?.toISOString() ?? null,
+        projectId: t.projectId,
+      })),
+      taskCounts,
+    });
+  });
+
   // ── POST /:workspaceId/invitations ────────────────────────────────────────
   fastify.post('/:workspaceId/invitations', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };

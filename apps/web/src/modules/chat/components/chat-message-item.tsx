@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Pin, Trash2, Smile, ShieldCheck, Crown, Paperclip } from 'lucide-react';
 import { ChatMessageDto } from '@realm/types';
+import { UserProfileCardTrigger } from '@/shared/components/user-profile-card-trigger';
 
 interface ChatMessageItemProps {
   message: ChatMessageDto;
@@ -148,17 +149,20 @@ export function ChatMessageItem({
               {formatTime(message.createdAt)}
             </span>
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#27272a] to-[#18181b]
-              border border-[#2e2e32] flex items-center justify-center text-sm font-bold
-              text-[#a1a1aa] overflow-hidden flex-shrink-0 select-none">
-              {message.sender.avatarUrl ? (
-                <img
-                  src={message.sender.avatarUrl}
-                  alt={message.sender.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : senderInitial}
-            </div>
+            <UserProfileCardTrigger userId={message.sender.id}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#27272a] to-[#18181b]
+                border border-[#2e2e32] flex items-center justify-center text-sm font-bold
+                text-[#a1a1aa] overflow-hidden flex-shrink-0 select-none cursor-pointer
+                hover:ring-2 hover:ring-[#7c3aed]/50 transition-all">
+                {message.sender.avatarUrl ? (
+                  <img
+                    src={message.sender.avatarUrl}
+                    alt={message.sender.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : senderInitial}
+              </div>
+            </UserProfileCardTrigger>
           )}
         </div>
 
@@ -168,9 +172,12 @@ export function ChatMessageItem({
           {/* Header — only on the first message of a group */}
           {!isGrouped && (
             <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-1">
-              <span className="text-[13px] font-semibold text-[#fafafa] leading-none">
-                {message.sender.name}
-              </span>
+              <UserProfileCardTrigger userId={message.sender.id}>
+                <span className="text-[13px] font-semibold text-[#fafafa] leading-none
+                  hover:text-[#a78bfa] hover:underline underline-offset-2 transition-colors cursor-pointer">
+                  {message.sender.name}
+                </span>
+              </UserProfileCardTrigger>
 
               {isAdmin && (
                 <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold

@@ -39,8 +39,7 @@ export interface ChatMessageDto {
   replyCount?: number;
 }
 
-/** Workspace-level roles a member can hold */
-export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'MEMBER';
+import type { WorkspaceRole } from './workspace';
 
 /** A member of a specific channel with their channel-level role */
 export interface ChannelMemberDto {

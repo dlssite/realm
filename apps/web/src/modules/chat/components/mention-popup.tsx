@@ -7,16 +7,15 @@ export interface MentionCandidate {
   name: string;
   email: string;
   avatarUrl?: string | null | undefined;
-  workspaceRole?: WorkspaceRole;
+  workspaceRole?: WorkspaceRole | undefined;
 }
 
 // ── Role badge helpers ──────────────────────────────────────────────────────
 
-const ROLE_BADGE: Record<WorkspaceRole, { label: string; className: string } | undefined> = {
+const ROLE_BADGE: Partial<Record<WorkspaceRole, { label: string; className: string }>> = {
   OWNER:   { label: 'Owner',   className: 'bg-[#7c3aed]/20 text-[#a78bfa] ring-1 ring-[#7c3aed]/40' },
   ADMIN:   { label: 'Admin',   className: 'bg-[#2563eb]/20 text-[#60a5fa] ring-1 ring-[#2563eb]/40' },
   MANAGER: { label: 'Manager', className: 'bg-[#059669]/20 text-[#34d399] ring-1 ring-[#059669]/40' },
-  MEMBER:  undefined,
 };
 
 interface MentionPopupProps {
@@ -29,13 +28,16 @@ interface MentionPopupProps {
 }
 
 export function buildCandidates(members: ChannelMemberDto[]): MentionCandidate[] {
-  return members.map(m => ({
-    userId: m.userId,
-    name: m.user.name,
-    email: m.user.email,
-    avatarUrl: m.user.avatarUrl,
-    workspaceRole: m.workspaceRole,
-  }));
+  return members.map(m => {
+    const candidate: MentionCandidate = {
+      userId:    m.userId,
+      name:      m.user.name,
+      email:     m.user.email,
+      avatarUrl: m.user.avatarUrl,
+    };
+    if (m.workspaceRole != null) candidate.workspaceRole = m.workspaceRole;
+    return candidate;
+  });
 }
 
 export function MentionPopup({
