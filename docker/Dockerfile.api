@@ -85,4 +85,4 @@ EXPOSE 4000
 
 # Run migrations against the MERGED schema.prisma, then start the server.
 # This mirrors the project's prisma:migrate script convention.
-CMD ["sh", "-c", "node /app/scripts/merge-prisma.js && npx prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]

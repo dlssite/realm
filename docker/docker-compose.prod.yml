@@ -118,6 +118,9 @@ services:
       - "443:443/udp"   # HTTP/3
     environment:
       REALM_DOMAIN: ${REALM_DOMAIN}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
