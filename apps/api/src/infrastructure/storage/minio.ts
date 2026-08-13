@@ -11,95 +11,74 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// ── Client singleton ──────────────────────────────────────────────────────────
+// ── Endpoints ─────────────────────────────────────────────────────────────────
 
 const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
-const port = Number(process.env.MINIO_PORT ?? 9000);
-const useSSL = process.env.MINIO_USE_SSL === 'true';
+const port     = Number(process.env.MINIO_PORT ?? 9000);
+const useSSL   = process.env.MINIO_USE_SSL === 'true';
 const protocol = useSSL ? 'https' : 'http';
 
-/** Internal endpoint the SDK connects to (may be a Docker service name). */
+/** Internal endpoint — used for all non-presign operations (put, delete, head). */
 const internalEndpoint = `${protocol}://${endpoint}:${port}`;
 
 /**
- * Optional public base URL rewritten into every presigned URL before it is
- * sent to the browser.  Required when:
- *  - MinIO runs on an internal hostname (e.g. Docker service "minio"), OR
- *  - The app is served over HTTPS (browser blocks mixed http:// requests).
+ * MINIO_PUBLIC_URL, e.g. https://realm.sanctyr.cloud/storage
  *
- * Example value: https://minio.sanctyr.cloud
+ * When set, presigned URLs are generated using this endpoint directly so
+ * the browser receives a URL that:
+ *  a) resolves publicly (no internal Docker hostname), and
+ *  b) has its HMAC computed against the correct host — avoiding the 403
+ *     that occurs when you sign with one host and send to another.
+ *
+ * Caddy proxies  /storage/*  →  minio:9000  (stripping the /storage prefix),
+ * so MinIO receives the original path and validates the signature correctly.
  */
 const publicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') ?? null;
 
+// ── S3 clients ────────────────────────────────────────────────────────────────
+
+/** Used for server-side operations: delete, head, etc. */
 export const s3 = new S3Client({
   endpoint: internalEndpoint,
-  region: 'us-east-1', // MinIO ignores region but the SDK requires one
+  region: 'us-east-1',
   credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
+    accessKeyId:     process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
     secretAccessKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
   },
-  // Required for MinIO path-style URLs  (vs virtual-hosted style on AWS)
   forcePathStyle: true,
 });
 
-export const BUCKET = process.env.MINIO_BUCKET ?? 'realm-files';
-
-// ── URL rewriter ──────────────────────────────────────────────────────────────
-
 /**
- * Replace the internal MinIO origin in a presigned URL with the public URL.
- *
- * The AWS SDK signs the URL using the internal endpoint.  If MINIO_PUBLIC_URL
- * is set we swap the origin so the browser hits the public host instead of
- * the Docker-internal one (which it cannot reach and which would also trigger
- * a mixed-content block when the app is served over HTTPS).
- *
- * The HMAC signature stays valid because MinIO / S3 signs the path + query
- * string, not the host header, so changing the host in the URL is safe as
- * long as the MinIO server accepts requests on that public hostname too.
+ * Used exclusively for generating presigned URLs.
+ * When MINIO_PUBLIC_URL is set, signs against the public endpoint so the
+ * HMAC host matches what the browser sends — no post-signing URL rewriting
+ * needed, and no signature mismatch / 403.
  */
-function rewriteToPublicUrl(presignedUrl: string): string {
-  if (!publicUrl) return presignedUrl;
+const s3Presign = publicUrl
+  ? new S3Client({
+      endpoint: publicUrl,
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId:     process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
+        secretAccessKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
+      },
+      forcePathStyle: true,
+    })
+  : s3; // fallback: same client when no public URL configured
 
-  const parsed = new URL(presignedUrl);
-  const target = new URL(publicUrl);
-
-  parsed.protocol = target.protocol;
-  parsed.hostname = target.hostname;
-  parsed.port     = target.port; // '' when public URL has no explicit port
-
-  // If MINIO_PUBLIC_URL includes a path prefix (e.g. /storage) prepend it
-  // so the browser request reaches the Caddy proxy route correctly.
-  // e.g. https://realm.sanctyr.cloud/storage  +  /realm-files/key
-  //   →  https://realm.sanctyr.cloud/storage/realm-files/key
-  const prefix = target.pathname.replace(/\/$/, ''); // strip trailing slash
-  if (prefix) {
-    parsed.pathname = prefix + parsed.pathname;
-  }
-
-  return parsed.toString();
-}
+export const BUCKET = process.env.MINIO_BUCKET ?? 'realm-files';
 
 // ── Presigned upload URL ──────────────────────────────────────────────────────
 
 export interface PresignedUploadResult {
-  /** PUT this URL directly from the browser — no API server in the loop */
   uploadUrl: string;
-  /** The object key to reference the file permanently in the database */
   storageKey: string;
 }
 
-/**
- * Generate a presigned PUT URL.
- * The client uploads directly to MinIO; the API never receives file bytes.
- *
- * @param storageKey  - Unique object key, e.g. "workspaces/abc/files/xyz.pdf"
- * @param contentType - MIME type declared by the client, e.g. "application/pdf"
- * @param expiresIn   - Seconds until the URL expires (default 5 minutes)
- */
 export async function createPresignedUploadUrl(
   storageKey: string,
   contentType: string,
@@ -111,22 +90,12 @@ export async function createPresignedUploadUrl(
     ContentType: contentType,
   });
 
-  const uploadUrl = rewriteToPublicUrl(
-    await getSignedUrl(s3, command, { expiresIn })
-  );
+  const uploadUrl = await getSignedUrl(s3Presign, command, { expiresIn });
   return { uploadUrl, storageKey };
 }
 
 // ── Presigned download URL ────────────────────────────────────────────────────
 
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-
-/**
- * Generate a presigned GET URL for downloading / previewing a file.
- *
- * @param storageKey - The object key stored in the database
- * @param expiresIn  - Seconds until the URL expires (default 1 hour)
- */
 export async function createPresignedDownloadUrl(
   storageKey: string,
   expiresIn = 3600
@@ -136,25 +105,17 @@ export async function createPresignedDownloadUrl(
     Key: storageKey,
   });
 
-  return rewriteToPublicUrl(await getSignedUrl(s3, command, { expiresIn }));
+  return getSignedUrl(s3Presign, command, { expiresIn });
 }
 
 // ── Delete object ─────────────────────────────────────────────────────────────
 
-/**
- * Hard-delete an object from MinIO.
- * Call this after soft-deleting the FileRecord or during cleanup jobs.
- */
 export async function deleteObject(storageKey: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: storageKey }));
 }
 
 // ── Verify object exists ──────────────────────────────────────────────────────
 
-/**
- * Confirm an upload completed successfully by checking object existence.
- * Used in the "confirm upload" endpoint before creating the database record.
- */
 export async function objectExists(storageKey: string): Promise<boolean> {
   try {
     await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: storageKey }));
@@ -166,16 +127,11 @@ export async function objectExists(storageKey: string): Promise<boolean> {
 
 // ── Storage key factory ───────────────────────────────────────────────────────
 
-/**
- * Build a deterministic, collision-free storage key.
- * Pattern: workspaces/{workspaceId}/files/{uuid}/{filename}
- */
 export function buildStorageKey(
   workspaceId: string,
   fileId: string,
   filename: string
 ): string {
-  // Sanitise filename: strip path separators and control chars
   const safe = filename.replace(/[/\\?%*:|"<>]/g, '_');
   return `workspaces/${workspaceId}/files/${fileId}/${safe}`;
 }

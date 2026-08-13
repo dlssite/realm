@@ -52,19 +52,13 @@
         }
     }
 
-    # ── MinIO presigned upload pass-through ───────────────────────────────────
-    # Presigned URLs point to /storage/* on this domain.
-    # Caddy strips the /storage prefix and forwards to MinIO.
-    # header_up Host overrides the forwarded Host so MinIO sees its own
-    # internal name and doesn't reject the request.
+    # ── MinIO presigned upload/download pass-through ─────────────────────────
+    # The API signs presigned URLs using https://realm.sanctyr.cloud/storage
+    # as the endpoint, so the browser sends requests here.
+    # Caddy strips /storage and forwards the rest to minio:9000.
     handle /storage/* {
         uri strip_prefix /storage
-        reverse_proxy minio:9000 {
-            header_up Host minio:9000
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+        reverse_proxy minio:9000
     }
 
     # ── Frontend SPA ─────────────────────────────────────────────────────────
