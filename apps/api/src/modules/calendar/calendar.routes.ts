@@ -105,12 +105,17 @@ export async function calendarRoutes(fastify: FastifyInstance) {
       const toDate = new Date(to);
 
       // 1. Custom calendar events
+      // An event overlaps the requested range if it starts before the range ends
+      // AND ends after the range starts. This correctly handles:
+      //   - events that start before the range but end inside it
+      //   - events that start inside the range but end after it
+      //   - multi-day events that span the entire range
       const events = await prisma.calendarEvent.findMany({
         where: {
           workspaceId,
           deletedAt: null,
-          startsAt: { gte: fromDate },
-          endsAt: { lte: toDate },
+          startsAt: { lt: toDate },
+          endsAt:   { gt: fromDate },
           ...(projectId ? { projectId } : {}),
         },
         select: eventSelect,

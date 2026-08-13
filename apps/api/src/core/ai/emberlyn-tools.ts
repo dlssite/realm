@@ -11,7 +11,7 @@ const ALL_TOOLS: EmberlynTool[] = [
   ...taskTools,      // 8  — Tasks: search, get, create, update, comment, subtask, assign, due-date
   ...projectTools,   // 8  — Projects: list, get, create, update, milestone, goal
   ...workspaceTools, // 7  — Workspace: members, teams, files, global search
-  ...calendarTools,  // 5  — Calendar: feed, create, update, delete, rsvp
+  ...calendarTools,  // 6  — Calendar: feed, my-invites, create, update, delete, rsvp
   ...wikiTools,      // 5  — Wiki: search, get, list, create, update
 ];
 
