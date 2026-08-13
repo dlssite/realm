@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../../infrastructure/database/prisma';
 import { PasswordService } from '../../core/auth/auth.service';
-import { createPresignedUploadUrl, createPresignedDownloadUrl, objectExists, deleteObject } from '../../infrastructure/storage/minio';
+import { createPresignedUploadUrl, objectExists, deleteObject } from '../../infrastructure/storage/minio';
 import { randomUUID } from 'crypto';
 
 // ── Validation schemas ────────────────────────────────────────────────────────
@@ -12,8 +12,11 @@ const updateProfileSchema = z.object({
   avatarUrl: z.string().url().nullable().optional(),
 });
 
+const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB
+
 const avatarUploadUrlSchema = z.object({
   contentType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, 'Only jpeg, png, gif, webp images are allowed'),
+  fileSize: z.number().int().positive().max(MAX_AVATAR_BYTES, `File must be smaller than 10 MB`),
 });
 
 const confirmAvatarSchema = z.object({
@@ -110,6 +113,7 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
 
     const { contentType } = parse.data;
+    // fileSize is validated by the schema — no further action needed here
     const ext = contentType.split('/')[1]; // jpeg | png | gif | webp
     const fileId = randomUUID();
     const storageKey = `users/${request.user!.id}/avatar/${fileId}.${ext}`;
@@ -142,9 +146,15 @@ export async function userRoutes(fastify: FastifyInstance) {
       });
     }
 
-    // Generate a long-lived presigned download URL (10 years) to use as the persistent avatarUrl
-    const TEN_YEARS_SECONDS = 10 * 365 * 24 * 60 * 60;
-    const avatarUrl = await createPresignedDownloadUrl(storageKey, TEN_YEARS_SECONDS);
+    // Build a stable permanent public URL.
+    // The bucket has anonymous download policy, so no signing is needed.
+    // Presigned URLs expire (max 7 days for MinIO) — storing one as avatarUrl
+    // would break the avatar after expiry.
+    const publicBase = (process.env.MINIO_PUBLIC_URL ?? '').replace(/\/$/, '');
+    const bucket     = process.env.MINIO_BUCKET ?? 'realm-files';
+    const avatarUrl  = publicBase
+      ? `${publicBase}/${bucket}/${storageKey}`
+      : `http://${process.env.MINIO_ENDPOINT ?? 'localhost'}:${process.env.MINIO_PORT ?? 9000}/${bucket}/${storageKey}`;
 
     // Delete old avatar object from storage if it was a user-managed one
     const existing = await prisma.user.findUnique({
@@ -155,7 +165,9 @@ export async function userRoutes(fastify: FastifyInstance) {
       try {
         // Only delete if it's a storage-managed key (users/{id}/avatar/...)
         const url = new URL(existing.avatarUrl);
-        const oldKey = url.pathname.replace(/^\/[^/]+\//, ''); // strip bucket prefix from path
+        const oldKey = decodeURIComponent(url.pathname)
+          .replace(/^\/storage\//, '')  // strip /storage/ prefix
+          .replace(/^[^/]+\//, '');     // strip bucket name
         if (oldKey.startsWith(`users/${request.user!.id}/avatar/`)) {
           await deleteObject(oldKey);
         }

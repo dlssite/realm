@@ -8,7 +8,7 @@ import {
 } from '../api/profile-api';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MAX_SIZE_MB = 5;
+const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 interface ProfileAvatarProps {
@@ -68,7 +68,7 @@ export function ProfileAvatar({ name, avatarUrl, token, onAvatarChange }: Profil
 
     try {
       // Step 1 — get presigned PUT URL
-      const { uploadUrl, storageKey } = await getAvatarUploadUrl(token, file.type);
+      const { uploadUrl, storageKey } = await getAvatarUploadUrl(token, file.type, file.size);
 
       // Step 2 — PUT directly to MinIO
       await uploadAvatarToStorage(uploadUrl, file);

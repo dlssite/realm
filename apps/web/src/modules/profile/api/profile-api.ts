@@ -38,12 +38,13 @@ export async function updateProfile(
  */
 export async function getAvatarUploadUrl(
   token: string,
-  contentType: string
+  contentType: string,
+  fileSize: number,
 ): Promise<{ uploadUrl: string; storageKey: string }> {
   const res = await fetch(`${BASE}/me/avatar/upload-url`, {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ contentType }),
+    body: JSON.stringify({ contentType, fileSize }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message ?? 'Failed to get upload URL');
