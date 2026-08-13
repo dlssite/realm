@@ -69,7 +69,16 @@ function rewriteToPublicUrl(presignedUrl: string): string {
 
   parsed.protocol = target.protocol;
   parsed.hostname = target.hostname;
-  parsed.port = target.port; // '' if the public URL has no explicit port
+  parsed.port     = target.port; // '' when public URL has no explicit port
+
+  // If MINIO_PUBLIC_URL includes a path prefix (e.g. /storage) prepend it
+  // so the browser request reaches the Caddy proxy route correctly.
+  // e.g. https://realm.sanctyr.cloud/storage  +  /realm-files/key
+  //   →  https://realm.sanctyr.cloud/storage/realm-files/key
+  const prefix = target.pathname.replace(/\/$/, ''); // strip trailing slash
+  if (prefix) {
+    parsed.pathname = prefix + parsed.pathname;
+  }
 
   return parsed.toString();
 }
