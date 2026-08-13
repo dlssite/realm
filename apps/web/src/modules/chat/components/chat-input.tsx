@@ -74,7 +74,14 @@ export function ChatInput({ channelName, onSendMessage }: ChatInputProps) {
   const channelMembersMap = useChatStore(s => s.channelMembers);
 
   const allMembers    = activeId ? (channelMembersMap[activeId] ?? []) : [];
-  const allCandidates = buildCandidates(allMembers);
+
+  // Build candidates sorted by workspace role rank (Owner first, then Admin, Manager, Member)
+  const ROLE_ORDER: Record<string, number> = { OWNER: 0, ADMIN: 1, MANAGER: 2, MEMBER: 3 };
+  const allCandidates = buildCandidates(allMembers).sort((a, b) => {
+    const diff = (ROLE_ORDER[a.workspaceRole ?? 'MEMBER'] ?? 3) -
+                 (ROLE_ORDER[b.workspaceRole ?? 'MEMBER'] ?? 3);
+    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+  });
 
   // Filter by current query (case-insensitive prefix/contains match on name or email)
   const filteredCandidates: MentionCandidate[] =

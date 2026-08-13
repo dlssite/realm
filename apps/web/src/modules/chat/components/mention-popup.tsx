@@ -1,13 +1,23 @@
 import React, { useEffect, useRef } from 'react';
 import { AtSign } from 'lucide-react';
-import { ChannelMemberDto } from '@realm/types';
+import { ChannelMemberDto, WorkspaceRole } from '@realm/types';
 
 export interface MentionCandidate {
   userId: string;
   name: string;
   email: string;
   avatarUrl?: string | null | undefined;
+  workspaceRole?: WorkspaceRole;
 }
+
+// ── Role badge helpers ──────────────────────────────────────────────────────
+
+const ROLE_BADGE: Record<WorkspaceRole, { label: string; className: string } | undefined> = {
+  OWNER:   { label: 'Owner',   className: 'bg-[#7c3aed]/20 text-[#a78bfa] ring-1 ring-[#7c3aed]/40' },
+  ADMIN:   { label: 'Admin',   className: 'bg-[#2563eb]/20 text-[#60a5fa] ring-1 ring-[#2563eb]/40' },
+  MANAGER: { label: 'Manager', className: 'bg-[#059669]/20 text-[#34d399] ring-1 ring-[#059669]/40' },
+  MEMBER:  undefined,
+};
 
 interface MentionPopupProps {
   candidates: MentionCandidate[];
@@ -24,6 +34,7 @@ export function buildCandidates(members: ChannelMemberDto[]): MentionCandidate[]
     name: m.user.name,
     email: m.user.email,
     avatarUrl: m.user.avatarUrl,
+    workspaceRole: m.workspaceRole,
   }));
 }
 
@@ -108,17 +119,26 @@ export function MentionPopup({
 
                   {/* Name + email */}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-semibold leading-none truncate
-                      ${isActive ? 'text-[#fafafa]' : 'text-[#e4e4e7]'}`}
-                    >
-                      {c.name}
-                    </p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className={`text-xs font-semibold leading-none truncate
+                        ${isActive ? 'text-[#fafafa]' : 'text-[#e4e4e7]'}`}
+                      >
+                        {c.name}
+                      </p>
+                      {c.workspaceRole && ROLE_BADGE[c.workspaceRole] && (
+                        <span className={`flex-shrink-0 text-[9px] font-semibold px-1.5 py-0.5
+                          rounded-full leading-none ${ROLE_BADGE[c.workspaceRole]!.className}`}
+                        >
+                          {ROLE_BADGE[c.workspaceRole]!.label}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-[#52525b] leading-none mt-0.5 truncate">
                       {c.email}
                     </p>
                   </div>
 
-                  {/* @name hint */}
+                  {/* @handle hint */}
                   <span className={`text-[10px] font-mono flex-shrink-0
                     ${isActive ? 'text-[#a78bfa]' : 'text-[#3f3f46]'}`}
                   >

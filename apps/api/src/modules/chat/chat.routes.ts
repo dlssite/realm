@@ -355,7 +355,14 @@ export async function chatRoutes(fastify: FastifyInstance) {
   });
 
   // ── GET /:workspaceId/channels/:channelId/members ─────────────────────────
-  // List members of a channel with their channel-level roles.
+  // List members who can participate in a channel, with their effective channel-
+  // level role AND their workspace-level role (for role badges in the UI).
+  //
+  // For each channel type the "member universe" is:
+  //   GENERAL  → every workspace member
+  //   TEAM     → team members + workspace OWNER/ADMIN
+  //   PROJECT  → project members + workspace OWNER/ADMIN
+  //   CUSTOM   → ChannelMember rows only
   fastify.get('/:workspaceId/channels/:channelId/members', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, channelId } = request.params as { workspaceId: string; channelId: string };
     const userId = request.user!.id;
@@ -365,27 +372,112 @@ export async function chatRoutes(fastify: FastifyInstance) {
       return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Access denied' } });
     }
 
-    const channel = await prisma.channel.findFirst({ where: { id: channelId, workspaceId } });
+    const channel = await prisma.channel.findFirst({
+      where: { id: channelId, workspaceId },
+      include: {
+        team: { select: { id: true, leaderId: true, members: { select: { userId: true } } } },
+        project: { select: { id: true, members: { select: { userId: true, role: true } } } },
+        members: { select: { userId: true, role: true, lastReadAt: true } },
+      },
+    });
     if (!channel) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Channel not found' } });
     }
 
-    const members = await prisma.channelMember.findMany({
-      where: { channelId },
-      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    return reply.send(
-      members.map(m => ({
-        id: m.id,
-        userId: m.userId,
-        channelId: m.channelId,
-        role: m.role,
-        lastReadAt: m.lastReadAt.toISOString(),
-        user: m.user,
-      }))
+    // ── Build a map of userId → channelMember row (for stored role + lastReadAt) ──
+    const channelMemberMap = new Map(
+      channel.members.map(m => [m.userId, m]),
     );
+
+    // ── Determine which workspace members to include ──────────────────────────
+    let wsMembers: { userId: string; wsRole: string }[] = [];
+
+    if (channel.type === 'GENERAL' || channel.type === 'CUSTOM') {
+      // GENERAL: all workspace members; CUSTOM: only stored channel members
+      const rows = channel.type === 'GENERAL'
+        ? await prisma.workspaceMember.findMany({
+            where: { workspaceId },
+            select: { userId: true, role: true },
+          })
+        : await prisma.workspaceMember.findMany({
+            where: {
+              workspaceId,
+              userId: { in: Array.from(channelMemberMap.keys()) },
+            },
+            select: { userId: true, role: true },
+          });
+      wsMembers = rows.map(r => ({ userId: r.userId, wsRole: r.role }));
+    } else if (channel.type === 'TEAM' && channel.team) {
+      const teamUserIds = new Set(channel.team.members.map(m => m.userId));
+      const rows = await prisma.workspaceMember.findMany({
+        where: { workspaceId },
+        select: { userId: true, role: true },
+      });
+      wsMembers = rows
+        .filter(r => teamUserIds.has(r.userId) || ['OWNER', 'ADMIN'].includes(r.role))
+        .map(r => ({ userId: r.userId, wsRole: r.role }));
+    } else if (channel.type === 'PROJECT' && channel.project) {
+      const projectUserIds = new Set(channel.project.members.map(m => m.userId));
+      const rows = await prisma.workspaceMember.findMany({
+        where: { workspaceId },
+        select: { userId: true, role: true },
+      });
+      wsMembers = rows
+        .filter(r => projectUserIds.has(r.userId) || ['OWNER', 'ADMIN'].includes(r.role))
+        .map(r => ({ userId: r.userId, wsRole: r.role }));
+    }
+
+    if (wsMembers.length === 0) return reply.send([]);
+
+    // ── Fetch user profiles in one query ─────────────────────────────────────
+    const users = await prisma.user.findMany({
+      where: { id: { in: wsMembers.map(m => m.userId) } },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    // ── Derive effective channel role ─────────────────────────────────────────
+    const resolveRole = (uid: string, wsRole: string): 'ADMIN' | 'LEADER' | 'MEMBER' => {
+      if (['OWNER', 'ADMIN'].includes(wsRole)) return 'ADMIN';
+      if (channel.type === 'TEAM' && channel.team?.leaderId === uid) return 'LEADER';
+      const stored = channelMemberMap.get(uid);
+      if (stored) {
+        const r = stored.role.toUpperCase();
+        if (r === 'ADMIN') return 'ADMIN';
+        if (r === 'LEADER') return 'LEADER';
+      }
+      return 'MEMBER';
+    };
+
+    // ── Build response ────────────────────────────────────────────────────────
+    const now = new Date().toISOString();
+
+    const result = wsMembers
+      .map(({ userId: uid, wsRole }) => {
+        const user = userMap.get(uid);
+        if (!user) return null;
+        const stored = channelMemberMap.get(uid);
+        return {
+          // Use the stored ChannelMember id when available, otherwise synthesise one
+          id:          stored ? `${channelId}_${uid}` : `${channelId}_${uid}`,
+          userId:      uid,
+          channelId,
+          role:        resolveRole(uid, wsRole),
+          workspaceRole: wsRole,   // ← extra field consumed by frontend badges
+          lastReadAt:  stored ? stored.lastReadAt.toISOString() : now,
+          user,
+        };
+      })
+      .filter(Boolean)
+      // Sort: OWNER first, then ADMIN, then LEADER, then MEMBER; alphabetical within tier
+      .sort((a, b) => {
+        const order: Record<string, number> = { OWNER: 0, ADMIN: 1, MANAGER: 2, MEMBER: 3 };
+        const wsOrder = (order[a!.workspaceRole] ?? 4) - (order[b!.workspaceRole] ?? 4);
+        if (wsOrder !== 0) return wsOrder;
+        return a!.user.name.localeCompare(b!.user.name);
+      });
+
+    return reply.send(result);
   });
 
   // ── POST /:workspaceId/channels/:channelId/members/:targetUserId/admin ─────

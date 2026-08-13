@@ -39,12 +39,17 @@ export interface ChatMessageDto {
   replyCount?: number;
 }
 
+/** Workspace-level roles a member can hold */
+export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'MEMBER';
+
 /** A member of a specific channel with their channel-level role */
 export interface ChannelMemberDto {
   id: string;
   userId: string;
   channelId: string;
   role: ChannelRole;
+  /** Workspace-level role — included so the UI can show Owner/Admin/Manager badges */
+  workspaceRole?: WorkspaceRole;
   lastReadAt: string;
   user: {
     id: string;
