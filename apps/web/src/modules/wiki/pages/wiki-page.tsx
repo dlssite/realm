@@ -106,7 +106,7 @@ export default function WikiPage() {
 
     if (teamId) body.teamId = teamId;
     if (projectId) body.projectId = projectId;
-    if (visibilityRole) body.visibilityRole = createVisibilityRole;
+    if (createVisibilityRole) body.visibilityRole = createVisibilityRole;
 
     const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki`, {
       method: 'POST',
