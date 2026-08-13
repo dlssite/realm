@@ -73,6 +73,15 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-realm-files}
+      # Rewrite presigned URLs to the public HTTPS origin so browsers don't
+      # block them as mixed content.  Falls back to the /storage proxy path
+      # on the main domain if MINIO_PUBLIC_URL is not explicitly set.
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-https://${REALM_DOMAIN}/storage}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o}
+      AI_BASE_URL: ${AI_BASE_URL:-}
       VITE_APP_URL: https://${REALM_DOMAIN:?REALM_DOMAIN is required}
     depends_on:
       postgres:

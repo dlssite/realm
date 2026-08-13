@@ -67,8 +67,7 @@ export function ProfilePage() {
   const [nameSuccess, setNameSuccess] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
 
-  // Avatar save state
-  const [avatarSaving, setAvatarSaving] = useState(false);
+  // Avatar save state — now handled inside ProfileAvatar component
 
   // ── Load profile on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -109,24 +108,15 @@ export function ProfilePage() {
     }
   };
 
-  const handleSaveAvatar = async (url: string | null) => {
-    if (!token) return;
-    setAvatarSaving(true);
-    try {
-      const updated = await updateProfile(token, { avatarUrl: url });
-      setProfile((prev) => prev ? { ...prev, ...updated } : prev);
-      if (user) {
-        const next = { ...user };
-        if (updated.avatarUrl != null) next.avatarUrl = updated.avatarUrl;
-        else delete next.avatarUrl;
-        setAuth(next, workspace, token);
-      }
-      toast.success('Avatar updated');
-    } catch {
-      toast.error('Failed to update avatar');
-    } finally {
-      setAvatarSaving(false);
+  const handleAvatarChange = (newAvatarUrl: string | null) => {
+    setProfile((prev) => prev ? { ...prev, avatarUrl: newAvatarUrl } : prev);
+    if (user) {
+      const next = { ...user };
+      if (newAvatarUrl != null) next.avatarUrl = newAvatarUrl;
+      else delete next.avatarUrl;
+      setAuth(next, workspace, token);
     }
+    toast.success(newAvatarUrl ? 'Avatar updated' : 'Avatar removed');
   };
 
   const handleChangePassword = async (current: string, next: string) => {
@@ -182,8 +172,8 @@ export function ProfilePage() {
         <ProfileAvatar
           name={profile.name}
           avatarUrl={profile.avatarUrl}
-          isSaving={avatarSaving}
-          onSaveAvatar={handleSaveAvatar}
+          token={token!}
+          onAvatarChange={handleAvatarChange}
         />
       </Section>
 
