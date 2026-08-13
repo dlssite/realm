@@ -4,6 +4,25 @@
  * Uses the AWS SDK v3 S3 client pointed at MinIO.
  * Swap MINIO_ENDPOINT + credentials in .env to migrate to AWS S3 or
  * Cloudflare R2 with zero code changes.
+ *
+ * ── Presigned URL strategy ────────────────────────────────────────────────────
+ *
+ * AWS Signature V4 signs: method + path + query + Host header.
+ * Changing ANY of those after signing invalidates the HMAC → 403.
+ *
+ * We sign with the INTERNAL endpoint (http://minio:9000) so the signed
+ * path is exactly what MinIO receives.  Then we do a post-sign origin swap:
+ * replace only the scheme+host+port (never touching the path or query string).
+ *
+ * Caddy proxies /storage/* → minio:9000 and forwards Host: minio:9000 so
+ * MinIO sees the same Host that was signed.
+ *
+ * Example:
+ *   signed URL   http://minio:9000/realm-files/key?X-Amz-...
+ *   rewritten    https://realm.sanctyr.cloud/storage/realm-files/key?X-Amz-...
+ *   Caddy strips /storage prefix → minio:9000 receives /realm-files/key?X-Amz-...
+ *   MinIO validates Host: minio:9000 (set by Caddy header_up) ✓
+ *   MinIO validates path /realm-files/key ✓  → 200
  */
 
 import {
@@ -15,33 +34,30 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// ── Endpoints ─────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
 const port     = Number(process.env.MINIO_PORT ?? 9000);
 const useSSL   = process.env.MINIO_USE_SSL === 'true';
 const protocol = useSSL ? 'https' : 'http';
 
-/** Internal endpoint — used for all non-presign operations (put, delete, head). */
 const internalEndpoint = `${protocol}://${endpoint}:${port}`;
 
-/**
- * MINIO_PUBLIC_URL, e.g. https://realm.sanctyr.cloud/storage
- *
- * When set, presigned URLs are generated using this endpoint directly so
- * the browser receives a URL that:
- *  a) resolves publicly (no internal Docker hostname), and
- *  b) has its HMAC computed against the correct host — avoiding the 403
- *     that occurs when you sign with one host and send to another.
- *
- * Caddy proxies  /storage/*  →  minio:9000  (stripping the /storage prefix),
- * so MinIO receives the original path and validates the signature correctly.
- */
-const publicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') ?? null;
+// MINIO_PUBLIC_URL = https://realm.sanctyr.cloud/storage
+// We split it into origin (https://realm.sanctyr.cloud) and
+// path prefix (/storage) so we can rewrite correctly.
+const rawPublicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') ?? null;
+const publicOrigin = rawPublicUrl ? (() => {
+  const u = new URL(rawPublicUrl);
+  return `${u.protocol}//${u.host}`; // scheme + host only, no path
+})() : null;
+const publicPathPrefix = rawPublicUrl ? (() => {
+  const u = new URL(rawPublicUrl);
+  return u.pathname === '/' ? '' : u.pathname; // e.g. /storage
+})() : '';
 
-// ── S3 clients ────────────────────────────────────────────────────────────────
+// ── S3 client (internal — for all SDK operations) ────────────────────────────
 
-/** Used for server-side operations: delete, head, etc. */
 export const s3 = new S3Client({
   endpoint: internalEndpoint,
   region: 'us-east-1',
@@ -52,25 +68,40 @@ export const s3 = new S3Client({
   forcePathStyle: true,
 });
 
-/**
- * Used exclusively for generating presigned URLs.
- * When MINIO_PUBLIC_URL is set, signs against the public endpoint so the
- * HMAC host matches what the browser sends — no post-signing URL rewriting
- * needed, and no signature mismatch / 403.
- */
-const s3Presign = publicUrl
-  ? new S3Client({
-      endpoint: publicUrl,
-      region: 'us-east-1',
-      credentials: {
-        accessKeyId:     process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
-        secretAccessKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
-      },
-      forcePathStyle: true,
-    })
-  : s3; // fallback: same client when no public URL configured
-
 export const BUCKET = process.env.MINIO_BUCKET ?? 'realm-files';
+
+// ── URL rewriter ──────────────────────────────────────────────────────────────
+
+/**
+ * Swap the origin of an internally-signed presigned URL to the public origin,
+ * then prepend the path prefix if MINIO_PUBLIC_URL includes one.
+ *
+ * ONLY the scheme+host+port are replaced.  The path and query string (which
+ * contain the HMAC signature) are never touched, so the signature stays valid.
+ *
+ * Caddy must forward Host: minio:9000 to MinIO so MinIO sees the same Host
+ * that was used when signing.  See the Caddyfile /storage/* block.
+ */
+function rewriteOrigin(presignedUrl: string): string {
+  if (!publicOrigin) return presignedUrl;
+
+  const u = new URL(presignedUrl);
+  const originalOrigin = `${u.protocol}//${u.host}`;
+
+  // Replace origin only — path + query string untouched
+  let result = presignedUrl.replace(originalOrigin, publicOrigin);
+
+  // Prepend path prefix (e.g. /storage) so Caddy can route it
+  if (publicPathPrefix) {
+    // Insert prefix after the origin, before the path
+    result = result.replace(
+      publicOrigin,
+      publicOrigin + publicPathPrefix,
+    );
+  }
+
+  return result;
+}
 
 // ── Presigned upload URL ──────────────────────────────────────────────────────
 
@@ -82,7 +113,7 @@ export interface PresignedUploadResult {
 export async function createPresignedUploadUrl(
   storageKey: string,
   contentType: string,
-  expiresIn = 300
+  expiresIn = 300,
 ): Promise<PresignedUploadResult> {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
@@ -90,7 +121,8 @@ export async function createPresignedUploadUrl(
     ContentType: contentType,
   });
 
-  const uploadUrl = await getSignedUrl(s3Presign, command, { expiresIn });
+  const signed   = await getSignedUrl(s3, command, { expiresIn });
+  const uploadUrl = rewriteOrigin(signed);
   return { uploadUrl, storageKey };
 }
 
@@ -98,14 +130,11 @@ export async function createPresignedUploadUrl(
 
 export async function createPresignedDownloadUrl(
   storageKey: string,
-  expiresIn = 3600
+  expiresIn = 3600,
 ): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET,
-    Key: storageKey,
-  });
-
-  return getSignedUrl(s3Presign, command, { expiresIn });
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: storageKey });
+  const signed  = await getSignedUrl(s3, command, { expiresIn });
+  return rewriteOrigin(signed);
 }
 
 // ── Delete object ─────────────────────────────────────────────────────────────
@@ -130,7 +159,7 @@ export async function objectExists(storageKey: string): Promise<boolean> {
 export function buildStorageKey(
   workspaceId: string,
   fileId: string,
-  filename: string
+  filename: string,
 ): string {
   const safe = filename.replace(/[/\\?%*:|"<>]/g, '_');
   return `workspaces/${workspaceId}/files/${fileId}/${safe}`;

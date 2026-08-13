@@ -53,12 +53,16 @@
     }
 
     # ── MinIO presigned upload/download pass-through ─────────────────────────
-    # The API signs presigned URLs using https://realm.sanctyr.cloud/storage
-    # as the endpoint, so the browser sends requests here.
-    # Caddy strips /storage and forwards the rest to minio:9000.
+    # Presigned URLs are signed with Host: minio:9000 (internal endpoint).
+    # The API rewrites only the origin to https://realm.sanctyr.cloud/storage.
+    # Caddy strips the /storage prefix and forwards to minio:9000.
+    # header_up Host sets the Host header back to minio:9000 so MinIO sees
+    # the same Host that was used when computing the HMAC signature.
     handle /storage/* {
         uri strip_prefix /storage
-        reverse_proxy minio:9000
+        reverse_proxy minio:9000 {
+            header_up Host minio:9000
+        }
     }
 
     # ── Frontend SPA ─────────────────────────────────────────────────────────
