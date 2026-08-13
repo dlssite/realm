@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../../app/stores/auth.store';
 import { WidgetFrame } from '../WidgetFrame';
@@ -34,7 +35,7 @@ export function ActiveProjectsWidget() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/projects`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

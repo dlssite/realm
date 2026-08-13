@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Notification Zustand store.
  *
@@ -77,7 +78,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     // Avoid double-connecting
     if (get()._eventSource) return;
 
-    const url = `http://localhost:4000/api/v1/notifications/stream?token=${encodeURIComponent(token)}`;
+    const url = `${API_BASE}/api/v1/notifications/stream?token=${encodeURIComponent(token)}`;
     const es  = new EventSource(url);
 
     // Server sends `connected` event with initial unread count

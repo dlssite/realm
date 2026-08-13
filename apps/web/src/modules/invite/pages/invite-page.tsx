@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
@@ -72,7 +73,7 @@ export function InvitePage() {
 
     const lookup = async () => {
       try {
-        const res = await fetch(`http://localhost:4000/api/v1/invitations/${token}`);
+        const res = await fetch(`${API_BASE}/api/v1/invitations/${token}`);
         const data = await res.json();
 
         if (res.status === 410) {
@@ -102,7 +103,7 @@ export function InvitePage() {
     setIsDeclining(true);
     try {
       // Best-effort — we don't block navigation if the server errors
-      await fetch(`http://localhost:4000/api/v1/invitations/${token}/decline`, {
+      await fetch(`${API_BASE}/api/v1/invitations/${token}/decline`, {
         method: 'DELETE',
       });
     } catch {
@@ -122,7 +123,7 @@ export function InvitePage() {
 
     try {
       const currentToken = useAuthStore.getState().token;
-      const res = await fetch(`http://localhost:4000/api/v1/invitations/${token}/accept`, {
+      const res = await fetch(`${API_BASE}/api/v1/invitations/${token}/accept`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +162,7 @@ export function InvitePage() {
         : { action: 'register' as const, name, email, password };
 
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/invitations/${token}/accept`, {
+      const res = await fetch(`${API_BASE}/api/v1/invitations/${token}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

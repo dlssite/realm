@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import {
@@ -119,7 +120,7 @@ export default function SettingsPage() {
 
   const fetchMembers = useCallback(async () => {
     if (!workspace || !token) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/members`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/members`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setMembers(await res.json());
@@ -127,7 +128,7 @@ export default function SettingsPage() {
 
   const fetchInvitations = useCallback(async () => {
     if (!workspace || !token || !canManage) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/invitations`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/invitations`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setInvitations(await res.json());
@@ -135,7 +136,7 @@ export default function SettingsPage() {
 
   const fetchTeams = useCallback(async () => {
     if (!workspace || !token) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/teams`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/teams`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setTeams(await res.json());
@@ -158,7 +159,7 @@ export default function SettingsPage() {
     setInviteLink(null);
     setInviteLoading(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/invitations`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/invitations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
@@ -184,7 +185,7 @@ export default function SettingsPage() {
     setError(null);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/invitations/${invitationId}`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/invitations/${invitationId}`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {
@@ -206,7 +207,7 @@ export default function SettingsPage() {
     setError(null);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/members/${userId}`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/members/${userId}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -233,7 +234,7 @@ export default function SettingsPage() {
     setError(null);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/members/${userId}`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/members/${userId}`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {
@@ -254,7 +255,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: teamName, description: teamDescription }),

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { X, Hash, Users2, FolderKanban, Layers, ChevronRight } from 'lucide-react';
 import { useChatStore } from '../../../app/stores/use-chat.store';
@@ -59,10 +60,10 @@ export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps)
       setIsLoadingData(true);
       try {
         const [tRes, pRes] = await Promise.all([
-          fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/teams`, {
+          fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/teams`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/projects`, {
+          fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/projects`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);

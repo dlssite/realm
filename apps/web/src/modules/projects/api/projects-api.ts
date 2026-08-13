@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Projects API client.
  * Covers projects, milestones, and goals under a workspace.
@@ -17,7 +18,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/projects`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/projects`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

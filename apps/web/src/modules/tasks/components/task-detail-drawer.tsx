@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import {
@@ -111,7 +112,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   const fetchTaskDetails = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -126,14 +127,14 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   };
 
   const fetchWorkspaceLabels = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/labels`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/labels`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setWorkspaceLabels(await res.json());
   };
 
   const fetchWorkspaceTasks = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
@@ -151,7 +152,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   const fetchAssignees = async (projectId: string | null) => {
     if (projectId) {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}/assignees`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/assignees`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -162,7 +163,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
       }
     }
     // Fallback: all workspace members → normalize { userId, role, user } → flat user shape
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/members`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/members`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
@@ -176,7 +177,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
 
   const handleUpdate = async (fields: Partial<{ title: string; description: string; status: string; priority: string; dueDate: string | null; assigneeId: string | null }>) => {
     if (!taskId) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(fields),
@@ -190,7 +191,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !taskId) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/comments`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ body: newComment }),
@@ -205,7 +206,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   const handleAddSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubtaskTitle.trim() || !taskId) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -223,7 +224,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
 
   const handleToggleSubtaskStatus = async (subtaskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'DONE' ? 'TODO' : 'DONE';
-    await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${subtaskId}`, {
+    await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${subtaskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: nextStatus }),
@@ -234,7 +235,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
 
   const handleAddDependency = async () => {
     if (!selectedBlocker || !taskId) return;
-    await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/dependencies`, {
+    await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/dependencies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ blockingTaskId: selectedBlocker }),
@@ -246,7 +247,7 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
 
   const handleRemoveDependency = async (blockingTaskId: string) => {
     if (!taskId) return;
-    await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/dependencies/${blockingTaskId}`, {
+    await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/dependencies/${blockingTaskId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -257,12 +258,12 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
   const handleToggleLabel = async (labelId: string, hasLabel: boolean) => {
     if (!taskId) return;
     if (hasLabel) {
-      await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/labels/${labelId}`, {
+      await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/labels/${labelId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
     } else {
-      await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/labels`, {
+      await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/labels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ labelId }),

@@ -1,6 +1,7 @@
+﻿import { API_BASE } from '@/lib/api';
 import type { UserProfile, UpdateProfilePayload, ChangePasswordPayload } from '../types';
 
-const BASE = 'http://localhost:4000/api/v1/users';
+const BASE = `${API_BASE}/api/v1/users`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

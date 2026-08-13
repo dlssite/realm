@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Analytics API client.
  * Fetches workspace-level metrics and reporting data.
@@ -6,7 +7,7 @@
 import type { WorkspaceAnalytics, AnalyticsParams } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/analytics`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/analytics`;
 
 export async function fetchAnalytics(
   token: string,

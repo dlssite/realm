@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 /**
  * Workspace API client.
  * Covers workspace CRUD, members, invitations, and nav badge counts.
@@ -13,7 +14,7 @@ import type {
   NavCounts,
 } from '../types';
 
-const BASE = 'http://localhost:4000/api/v1/workspaces';
+const BASE = `${API_BASE}/api/v1/workspaces`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

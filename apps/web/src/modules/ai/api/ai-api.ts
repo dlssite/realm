@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * AI API client (Emberlyn).
  * Covers workspace AI config, chat completions, summarization, and conversation history.
@@ -15,7 +16,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/ai`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/ai`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

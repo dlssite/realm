@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import {
@@ -104,7 +105,7 @@ export default function TasksPage() {
       if (filterLabel) params.append('labelId', filterLabel);
       if (filterAssignee) params.append('assigneeId', filterAssignee);
 
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks?${params.toString()}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -115,21 +116,21 @@ export default function TasksPage() {
   };
 
   const fetchProjects = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setProjects(await res.json());
   };
 
   const fetchLabels = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/labels`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/labels`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setLabels(await res.json());
   };
 
   const fetchMembers = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/members`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/members`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setWorkspaceMembers(await res.json());
@@ -138,7 +139,7 @@ export default function TasksPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -154,7 +155,7 @@ export default function TasksPage() {
   };
 
   const handleStatusUpdate = async (taskId: string, newStatus: string) => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus }),

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../../app/stores/auth.store';
 import { WidgetFrame } from '../WidgetFrame';
@@ -45,7 +46,7 @@ export function WorkspaceStatsWidget() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const baseUrl = `http://localhost:4000/api/v1/workspaces/${workspace.id}`;
+      const baseUrl = `${API_BASE}/api/v1/workspaces/${workspace.id}`;
 
       // Parallel independent queries as per configuration
       const [projRes, taskRes, wikiRes, aiRes] = await Promise.all([

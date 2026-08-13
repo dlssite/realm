@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Automations API client.
  * Covers workspace automation rules (triggers + actions).
@@ -10,7 +11,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/automations`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/automations`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Activity API client.
  * Fetches the workspace audit log feed with cursor-based pagination.
@@ -6,7 +7,7 @@
 import type { ActivityPage, ListActivityParams } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/activity`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/activity`;
 
 export async function listActivity(
   token: string,

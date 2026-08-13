@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
@@ -70,7 +71,7 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -82,7 +83,7 @@ export default function ProjectsPage() {
 
   const fetchTeams = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setTeams(await res.json());
@@ -93,7 +94,7 @@ export default function ProjectsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({

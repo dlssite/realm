@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Files API client.
  * Upload flow: requestUploadUrl → PUT to MinIO directly → confirmUpload → record in DB.
@@ -11,7 +12,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/files`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/files`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

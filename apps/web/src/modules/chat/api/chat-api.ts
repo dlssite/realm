@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Chat API client.
  * Covers channels, messages, reactions, and pinning.
@@ -12,7 +13,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

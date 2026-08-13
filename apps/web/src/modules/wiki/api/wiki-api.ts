@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Wiki API client.
  * Covers pages, page versions, and templates under a workspace.
@@ -13,7 +14,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/wiki`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/wiki`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

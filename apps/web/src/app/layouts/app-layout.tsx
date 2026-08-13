@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
@@ -119,7 +120,7 @@ export function AppLayout() {
 
   useEffect(() => {
     if (!workspace?.id || !token) return;
-    fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/nav-counts`, {
+    fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/nav-counts`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -171,7 +172,7 @@ export function AppLayout() {
     if (!token) return;
     setWorkspacesLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/v1/workspaces', {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

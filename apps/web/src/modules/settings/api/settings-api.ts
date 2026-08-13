@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Settings API client.
  * Workspace-level settings are managed via the workspace and AI config endpoints.
@@ -8,7 +9,7 @@
 import type { WorkspaceSettings, UpdateWorkspaceSettingsPayload } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -36,7 +37,7 @@ export async function updateWorkspace(
   workspaceId: string,
   payload: UpdateWorkspaceSettingsPayload
 ): Promise<{ id: string; name: string; slug: string }> {
-  const res = await fetch(`http://localhost:4000/api/v1/workspaces`, {
+  const res = await fetch(`${API_BASE}/api/v1/workspaces`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify(payload),

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import Editor from '../components/Editor';
@@ -107,7 +108,7 @@ export default function WikiPage() {
     if (projectId) body.projectId = projectId;
     if (visibilityRole) body.visibilityRole = createVisibilityRole;
 
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
@@ -133,7 +134,7 @@ export default function WikiPage() {
   const fetchPages = async () => {
     setIsLoadingPages(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const text = await res.text();
@@ -166,7 +167,7 @@ export default function WikiPage() {
 
   const selectPage = async (id: string) => {
     setSelectedPageId(id);
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${id}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const text = await res.text();
@@ -208,7 +209,7 @@ export default function WikiPage() {
   };
 
   const fetchTemplates = async () => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/templates`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/templates`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const text = await res.text();
@@ -226,7 +227,7 @@ export default function WikiPage() {
 
   const fetchTeams = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -239,7 +240,7 @@ export default function WikiPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -266,7 +267,7 @@ export default function WikiPage() {
   const handleSaveAsTemplate = async () => {
     if (!selectedPageId) return;
     const name = pageTitle ? `${pageTitle} template` : 'Untitled template';
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/templates`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/templates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -287,7 +288,7 @@ export default function WikiPage() {
 
   const handleMovePage = async (pageId: string, newParentId: string | null) => {
     if (pageId === newParentId) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${pageId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${pageId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ parentId: newParentId }),
@@ -311,7 +312,7 @@ export default function WikiPage() {
   const confirmDeletePage = async () => {
     if (!deletePageId) return;
 
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${deletePageId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${deletePageId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -363,7 +364,7 @@ export default function WikiPage() {
       body.visibilityRole = visibilityRole;
     }
 
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${selectedPageId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${selectedPageId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
@@ -380,7 +381,7 @@ export default function WikiPage() {
   const fetchVersions = async (pageId: string) => {
     setIsLoadingVersions(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${pageId}/versions`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${pageId}/versions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const text = await res.text();
@@ -401,7 +402,7 @@ export default function WikiPage() {
 
   const handleRestoreVersion = async (versionId: string) => {
     if (!selectedPageId) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/wiki/${selectedPageId}/versions/${versionId}/restore`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/wiki/${selectedPageId}/versions/${versionId}/restore`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });

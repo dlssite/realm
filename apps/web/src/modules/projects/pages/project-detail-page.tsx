@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
@@ -84,7 +85,7 @@ export default function ProjectDetailPage() {
   const fetchProjectDetails = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -96,7 +97,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus }),
@@ -107,7 +108,7 @@ export default function ProjectDetailPage() {
   const handleCreateMilestone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!milestoneName.trim()) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: milestoneName, dueDate: milestoneDate ? new Date(milestoneDate).toISOString() : undefined }),
@@ -121,7 +122,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleToggleMilestone = async (milestoneId: string, isCompleted: boolean) => {
-    await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones/${milestoneId}`, {
+    await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones/${milestoneId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ isCompleted: !isCompleted }),
@@ -132,7 +133,7 @@ export default function ProjectDetailPage() {
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goalName.trim()) return;
-    const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/projects/${projectId}/goals`, {
+    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/goals`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: goalName, targetValue: Number(goalTarget), currentValue: 0 }),

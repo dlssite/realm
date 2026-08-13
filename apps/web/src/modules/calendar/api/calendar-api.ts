@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import type {
   CalendarFeed,
   CalendarEvent,
@@ -6,7 +7,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/calendar`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/calendar`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

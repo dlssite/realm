@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 /**
  * Invite API client.
  * Handles accepting a workspace invitation via a token link.
@@ -5,7 +6,7 @@
 
 import type { AcceptInviteResponse } from '../types';
 
-const BASE = 'http://localhost:4000/api/v1';
+const BASE = `${API_BASE}/api/v1`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

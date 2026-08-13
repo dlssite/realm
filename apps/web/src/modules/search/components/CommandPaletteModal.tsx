@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +31,7 @@ export function CommandPaletteModal({ isOpen, onClose }: Props) {
       setIsSearching(true);
       try {
         const res = await fetch(
-          `http://localhost:4000/api/v1/workspaces/${workspace.id}/search?q=${encodeURIComponent(query)}`,
+          `${API_BASE}/api/v1/workspaces/${workspace.id}/search?q=${encodeURIComponent(query)}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Teams API client.
  * Teams live under a workspace; endpoints are on the workspace router.
@@ -11,7 +12,7 @@ import type {
 } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/teams`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/teams`;
 
 function authHeaders(token: string): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

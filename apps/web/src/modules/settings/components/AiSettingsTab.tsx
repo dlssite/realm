@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import {
@@ -60,7 +61,7 @@ export function AiSettingsTab() {
     setIsLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/config`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/config`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -118,7 +119,7 @@ export function AiSettingsTab() {
     setErrorMessage(null);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/config`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/config`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

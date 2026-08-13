@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import { useChatStore } from '../../../app/stores/use-chat.store';
@@ -65,7 +66,7 @@ export default function TeamsPage() {
   const fetchTeams = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -85,7 +86,7 @@ export default function TeamsPage() {
 
   const fetchWorkspaceMembers = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/members`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setWorkspaceMembers(await res.json());
@@ -98,7 +99,7 @@ export default function TeamsPage() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -139,7 +140,7 @@ export default function TeamsPage() {
 
   const handleSetLeader = async (teamId: string, leaderId: string) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams/${teamId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams/${teamId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ leaderId: leaderId || null }),
@@ -154,7 +155,7 @@ export default function TeamsPage() {
     e.preventDefault();
     if (!selectedTeam || !addMemberUserId) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams/${selectedTeam.id}/members`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams/${selectedTeam.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userId: addMemberUserId }),
@@ -170,7 +171,7 @@ export default function TeamsPage() {
 
   const handleRemoveMember = async (teamId: string, userId: string) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams/${teamId}/members/${userId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams/${teamId}/members/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -183,7 +184,7 @@ export default function TeamsPage() {
   const handleDeleteTeam = async (teamId: string) => {
     if (!confirm('Are you sure you want to delete this team?')) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/teams/${teamId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams/${teamId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { WidgetFrame } from '../WidgetFrame';
 import { Sparkles, Send, Wand2, Code, Compass, ArrowRight, MessageSquare, Clock } from 'lucide-react';
@@ -37,7 +38,7 @@ export function AiQuickChatWidget() {
 
   useEffect(() => {
     if (!workspace || !token) return;
-    fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/ai/conversations`, {
+    fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/ai/conversations`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : [])

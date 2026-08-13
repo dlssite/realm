@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 /**
  * Notification REST API client.
  * All calls are against /api/v1/notifications (user-scoped, no workspaceId needed).
@@ -5,7 +6,7 @@
 
 import type { NotificationItem, NotificationPage } from '../types';
 
-const BASE = 'http://localhost:4000/api/v1/notifications';
+const BASE = `${API_BASE}/api/v1/notifications`;
 
 const headers = (token: string) => ({ Authorization: `Bearer ${token}` });
 

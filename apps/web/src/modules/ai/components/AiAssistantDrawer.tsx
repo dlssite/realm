@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -53,7 +54,7 @@ export function AiAssistantDrawer({ isOpen, onClose }: Props) {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/chat`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

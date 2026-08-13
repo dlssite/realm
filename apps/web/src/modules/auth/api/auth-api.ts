@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 /**
  * Auth API client.
  * Handles register, login, logout, and current-user fetch.
@@ -10,7 +11,7 @@ import type {
   MeResponse,
 } from '../types';
 
-const BASE = 'http://localhost:4000/api/v1/auth';
+const BASE = `${API_BASE}/api/v1/auth`;
 
 function jsonHeaders(): HeadersInit {
   return { 'Content-Type': 'application/json' };

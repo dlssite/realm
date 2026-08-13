@@ -1,9 +1,10 @@
+import { API_BASE } from '@/lib/api';
 import { create } from 'zustand';
 import { ChannelDto, ChatMessageDto, WsEventType, WsMessagePayload } from '@realm/types';
 import { useAuthStore } from './auth.store';
 
-const API_BASE = 'http://localhost:4000/api/v1';
-const WS_BASE = 'ws://localhost:4000/api/v1/workspaces/ws';
+const API_V1 = `${API_V1}/api/v1`;
+const WS_BASE = API_BASE.replace(/^http/, 'ws') + '/api/v1/workspaces/ws';
 
 interface ChatState {
   ws: WebSocket | null;
@@ -152,7 +153,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set({ isLoadingChannels: true });
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/channels`, {
+      const res = await fetch(`${API_V1}/workspaces/${workspace.id}/channels`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -198,7 +199,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set({ isLoadingMessages: true });
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/channels/${channelId}/messages`, {
+      const res = await fetch(`${API_V1}/workspaces/${workspace.id}/channels/${channelId}/messages`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -229,7 +230,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         data: { content, attachments }
       }));
     } else {
-      const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/channels/${activeChannelId}/messages`, {
+      const res = await fetch(`${API_V1}/workspaces/${workspace.id}/channels/${activeChannelId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ content, attachments })
@@ -252,7 +253,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!activeChannelId || !token || !workspace) return;
 
-    await fetch(`${API_BASE}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}`, {
+    await fetch(`${API_V1}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -263,7 +264,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!activeChannelId || !token || !workspace) return;
 
-    await fetch(`${API_BASE}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}/pin`, {
+    await fetch(`${API_V1}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}/pin`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -274,7 +275,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!activeChannelId || !token || !workspace) return;
 
-    await fetch(`${API_BASE}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}/reactions`, {
+    await fetch(`${API_V1}/workspaces/${workspace.id}/channels/${activeChannelId}/messages/${messageId}/reactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ emoji })
@@ -285,7 +286,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!token || !workspace) return null;
 
-    const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/channels`, {
+    const res = await fetch(`${API_V1}/workspaces/${workspace.id}/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name, description })
@@ -304,7 +305,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!token || !workspace) return null;
 
-    const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/teams/${teamId}/channel`, {
+    const res = await fetch(`${API_V1}/workspaces/${workspace.id}/teams/${teamId}/channel`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -322,7 +323,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { token, workspace } = useAuthStore.getState();
     if (!token || !workspace) return null;
 
-    const res = await fetch(`${API_BASE}/workspaces/${workspace.id}/projects/${projectId}/channel`, {
+    const res = await fetch(`${API_V1}/workspaces/${workspace.id}/projects/${projectId}/channel`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });

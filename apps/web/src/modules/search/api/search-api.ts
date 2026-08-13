@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Search API client.
  * Global workspace search across tasks, projects, and wiki pages.
@@ -6,7 +7,7 @@
 import type { SearchResults } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}/search`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}/search`;
 
 export async function search(
   token: string,

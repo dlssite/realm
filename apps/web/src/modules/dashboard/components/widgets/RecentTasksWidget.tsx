@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../../app/stores/auth.store';
 import { WidgetFrame } from '../WidgetFrame';
@@ -44,7 +45,7 @@ export function RecentTasksWidget() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/workspaces/${workspace.id}/tasks`, {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace.id}/tasks`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

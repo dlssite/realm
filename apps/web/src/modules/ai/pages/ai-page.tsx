@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -529,7 +530,7 @@ export default function AiPage() {
   const fetchAvailableModels = async () => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/available-models`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/available-models`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -556,7 +557,7 @@ export default function AiPage() {
     setIsLoadingConvs(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/conversations`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/conversations`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) setConversations(await res.json());
@@ -588,7 +589,7 @@ export default function AiPage() {
     if (!workspace || !token) return;
     try {
       await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/conversations/${convId}`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/conversations/${convId}`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       );
       setConversations((prev) => prev.filter((c) => c.id !== convId));
@@ -611,7 +612,7 @@ export default function AiPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/workspaces/${workspace!.id}/ai/chat`,
+        `${API_BASE}/api/v1/workspaces/${workspace!.id}/ai/chat`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

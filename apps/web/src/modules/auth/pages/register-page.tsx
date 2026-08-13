@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
@@ -18,7 +19,7 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:4000/api/v1/auth/register', {
+      const response = await fetch(`${API_BASE}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, password, workspaceName }),

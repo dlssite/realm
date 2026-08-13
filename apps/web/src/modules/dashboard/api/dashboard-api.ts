@@ -1,3 +1,4 @@
+import { API_BASE } from '@/lib/api';
 /**
  * Dashboard API client.
  * Aggregates nav counts and any dashboard-specific summary data.
@@ -6,7 +7,7 @@
 import type { NavCounts } from '../types';
 
 const BASE = (workspaceId: string) =>
-  `http://localhost:4000/api/v1/workspaces/${workspaceId}`;
+  `${API_BASE}/api/v1/workspaces/${workspaceId}`;
 
 export async function fetchNavCounts(
   token: string,

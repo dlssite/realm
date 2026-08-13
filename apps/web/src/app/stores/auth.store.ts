@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '@/lib/api';
 import { create } from 'zustand';
 import { User, Workspace } from '@realm/types';
 
@@ -23,7 +24,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!token) return;
 
     try {
-      const res = await fetch('http://localhost:4000/api/v1/auth/me', {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
