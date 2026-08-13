@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { ChannelDto, ChatMessageDto, WsEventType, WsMessagePayload } from '@realm/types';
 import { useAuthStore } from './auth.store';
 
-const API_V1 = `${API_V1}/api/v1`;
+const API_V1 = `${API_BASE}/api/v1`;
 const WS_BASE = API_BASE.replace(/^http/, 'ws') + '/api/v1/workspaces/ws';
 
 interface ChatState {
