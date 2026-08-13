@@ -135,6 +135,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   // ── loadItems ─────────────────────────────────────────────────────────────
   async loadItems(token) {
+    if (get().loading) return; // prevent concurrent calls
     set({ loading: true, error: null });
     try {
       const { listNotifications } = await import('../api/notification-api');

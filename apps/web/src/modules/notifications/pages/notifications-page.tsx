@@ -1,5 +1,5 @@
-/**
- * NotificationsPage — full inbox at /notifications.
+﻿/**
+ * NotificationsPage â€” full inbox at /notifications.
  *
  * Features:
  *  - Infinite scroll (cursor-based, 30 per page)
@@ -24,7 +24,7 @@ import {
 import { useFilterState } from '../hooks/use-filter-state';
 import type { NotificationItem, NotificationType } from '../types';
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TYPE_CONFIG: Record<NotificationType, { Icon: React.ElementType; color: string; bg: string; label: string }> = {
   TASK_ASSIGNED:        { Icon: CheckSquare,   color: 'text-[#60a5fa]', bg: 'bg-[#60a5fa]/10', label: 'Task assigned'      },
@@ -39,7 +39,7 @@ const TYPE_CONFIG: Record<NotificationType, { Icon: React.ElementType; color: st
   TEAM_MEMBER_ADDED:    { Icon: Users2,        color: 'text-[#818cf8]', bg: 'bg-[#818cf8]/10', label: 'Added to team'       },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function dayLabel(iso: string): string {
   const date      = new Date(iso);
@@ -81,7 +81,7 @@ function applyFilters(items: NotificationItem[], f: NotificationFilterState): No
   return result;
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+// â”€â”€ Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Skeleton() {
   return (
@@ -100,7 +100,7 @@ function Skeleton() {
   );
 }
 
-// ── Row ───────────────────────────────────────────────────────────────────────
+// â”€â”€ Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function NotifRow({ item, token }: { item: NotificationItem; token: string }) {
   const markRead = useNotificationStore((s) => s.markRead);
@@ -168,40 +168,49 @@ function NotifRow({ item, token }: { item: NotificationItem; token: string }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function NotificationsPage() {
   const { token }             = useAuthStore();
-  const store                 = useNotificationStore();
   const [filters, setFilters] = useFilterState(DEFAULT_FILTER);
+
+  // Select only stable primitives and actions â€” never the whole store object
+  const items       = useNotificationStore((s) => s.items);
+  const hasMore     = useNotificationStore((s) => s.hasMore);
+  const loading     = useNotificationStore((s) => s.loading);
+  const error       = useNotificationStore((s) => s.error);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const loadItems   = useNotificationStore((s) => s.loadItems);
+  const loadMore    = useNotificationStore((s) => s.loadMore);
+  const markAllRead = useNotificationStore((s) => s.markAllRead);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const reload = useCallback(() => {
-    if (token) store.loadItems(token);
-  }, [token, store]);
+    if (token) loadItems(token);
+  }, [token, loadItems]);
 
   useEffect(() => { reload(); }, [reload]);
 
   // Infinite scroll
   useEffect(() => {
-    if (!sentinelRef.current || !store.hasMore) return;
+    if (!sentinelRef.current || !hasMore) return;
     const obs = new IntersectionObserver(
-      (entries) => { if (entries[0]?.isIntersecting && token) store.loadMore(token); },
+      (entries) => { if (entries[0]?.isIntersecting && token) loadMore(token); },
       { threshold: 0.1 },
     );
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [store.hasMore, store.loadMore, token]);
+  }, [hasMore, loadMore, token]);
 
-  const displayed = applyFilters(store.items, filters);
+  const displayed = applyFilters(items, filters);
   const groups    = groupByDay(displayed);
   const isFiltered = filters.unreadOnly || filters.activeTypes.size > 0;
 
   return (
     <div className="space-y-0 pb-16">
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#1f1f23]">
         <div>
           <div className="flex items-center gap-2 text-xs text-[#7c3aed] font-medium mb-1">
@@ -210,14 +219,14 @@ export function NotificationsPage() {
           </div>
           <h1 className="text-2xl font-bold text-[#fafafa] tracking-tight">Notifications</h1>
           <p className="text-xs text-[#71717a] mt-0.5">
-            Alerts directed at you — assignments, mentions, and activity on your tasks.
+            Alerts directed at you â€” assignments, mentions, and activity on your tasks.
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {store.unreadCount > 0 && token && (
+          {unreadCount > 0 && token && (
             <button
-              onClick={() => store.markAllRead(token)}
+              onClick={() => markAllRead(token)}
               className="flex items-center gap-1.5 text-xs text-[#71717a] hover:text-[#fafafa] px-3 py-1.5 rounded-lg border border-[#27272a] hover:border-[#3f3f46] bg-[#18181b] hover:bg-[#1f1f23] transition-colors"
             >
               <CheckCheck className="w-3.5 h-3.5" />
@@ -226,39 +235,39 @@ export function NotificationsPage() {
           )}
           <button
             onClick={reload}
-            disabled={store.loading}
+            disabled={loading}
             className="flex items-center gap-1.5 text-xs text-[#71717a] hover:text-[#fafafa] px-3 py-1.5 rounded-lg border border-[#27272a] hover:border-[#3f3f46] bg-[#18181b] hover:bg-[#1f1f23] transition-colors disabled:opacity-40"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${store.loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
       </div>
 
-      {/* ── Filter bar ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="py-3 border-b border-[#1f1f23]">
         <NotificationFilters
           filters={filters}
           onChange={setFilters}
-          unreadCount={store.unreadCount}
+          unreadCount={unreadCount}
         />
       </div>
 
-      {/* ── Feed ────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="mt-2">
 
-        {store.error && !store.loading && (
+        {error && !loading && (
           <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 mt-4">
-            <span>{store.error}</span>
+            <span>{error}</span>
             <button onClick={reload} className="text-xs underline underline-offset-2 hover:text-red-300 ml-3 flex-shrink-0">
               Retry
             </button>
           </div>
         )}
 
-        {store.loading && store.items.length === 0 && <Skeleton />}
+        {loading && items.length === 0 && <Skeleton />}
 
-        {!store.loading && displayed.length === 0 && (
+        {!loading && displayed.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#7c3aed]/10 border border-[#7c3aed]/20 flex items-center justify-center mb-4">
               <Bell className="w-7 h-7 text-[#7c3aed]" />
@@ -308,13 +317,13 @@ export function NotificationsPage() {
 
             <div ref={sentinelRef} className="h-8" />
 
-            {store.loading && store.items.length > 0 && (
+            {loading && items.length > 0 && (
               <div className="flex justify-center py-4">
                 <div className="w-4 h-4 border-2 border-[#3f3f46] border-t-[#7c3aed] rounded-full animate-spin" />
               </div>
             )}
 
-            {!store.hasMore && displayed.length > 0 && (
+            {!hasMore && displayed.length > 0 && (
               <p className="text-center text-[10px] text-[#3f3f46] py-6 uppercase tracking-wider">
                 {"You're all caught up"}
               </p>
