@@ -14,13 +14,17 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import { useToast } from '../../../shared/hooks/use-toast';
-import { fetchFeed, createEvent, deleteEvent } from '../api/calendar-api';
+import { fetchFeed, createEvent, deleteEvent, updateRsvp } from '../api/calendar-api';
+import { listMembers } from '../../workspace/api/workspace-api';
+import type { WorkspaceMember } from '../../workspace/types';
 import { CalendarGrid } from '../components/calendar-grid';
 import { CreateEventModal } from '../components/create-event-modal';
 import { EventDetailModal } from '../components/event-detail-modal';
+import { DayDetailModal } from '../components/day-detail-modal';
 import {
   formatMonthYear,
   getMonthRange,
+  isSameDay,
 } from '../utils/calendar-utils';
 import type { CalendarEntry, CalendarFeed, CreateEventPayload } from '../types';
 
@@ -39,9 +43,12 @@ export function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [defaultEventDate, setDefaultEventDate] = useState<Date | undefined>();
   const [selectedEntry, setSelectedEntry] = useState<CalendarEntry | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   // ── Load feed whenever month changes ──────────────────────────────────────
   const loadFeed = useCallback(async () => {
@@ -60,6 +67,14 @@ export function CalendarPage() {
   }, [token, workspace, currentMonth]);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
+
+  // ── Load workspace members once (for attendee picker) ─────────────────────
+  useEffect(() => {
+    if (!token || !workspace) return;
+    listMembers(token, workspace.id)
+      .then(setMembers)
+      .catch(() => { /* non-critical — picker just stays empty */ });
+  }, [token, workspace]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const prevMonth = () =>
@@ -84,6 +99,10 @@ export function CalendarPage() {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleDayClick = (date: Date) => {
+    setSelectedDay(date);
+  };
+
+  const handleOpenCreateForDate = (date: Date) => {
     setDefaultEventDate(date);
     setShowCreateModal(true);
   };
@@ -111,6 +130,35 @@ export function CalendarPage() {
     } catch {
       toast.error('Failed to delete event');
     }
+  };
+
+  const handleRsvp = async (eventId: string, rsvp: 'ACCEPTED' | 'DECLINED' | 'MAYBE') => {
+    if (!token || !workspace) return;
+    await updateRsvp(token, workspace.id, eventId, rsvp);
+    // Update the feed so the attendees list reflects the new status immediately
+    setFeed((prev) => ({
+      ...prev,
+      events: prev.events.map((ev) =>
+        ev.id !== eventId
+          ? ev
+          : {
+              ...ev,
+              attendees: ev.attendees.map((a) =>
+                a.user.id === user?.id ? { ...a, rsvp } : a
+              ),
+            }
+      ),
+    }));
+    // Also patch selectedEntry so the detail modal re-renders without closing
+    setSelectedEntry((prev) => {
+      if (!prev || prev.kind !== 'event' || prev.id !== eventId) return prev;
+      return {
+        ...prev,
+        attendees: prev.attendees.map((a) =>
+          a.user.id === user?.id ? { ...a, rsvp } : a
+        ),
+      };
+    });
   };
 
   return (
@@ -198,15 +246,34 @@ export function CalendarPage() {
               entries={allEntries}
               onDayClick={handleDayClick}
               onEntryClick={setSelectedEntry}
+              onOverflowClick={handleDayClick}
             />
           </div>
         </div>
       )}
 
       {/* Modals */}
+      {selectedDay && (
+        <DayDetailModal
+          date={selectedDay}
+          entries={allEntries.filter((e) => {
+            const d =
+              e.kind === 'event'
+                ? new Date(e.startsAt)
+                : new Date(e.dueDate);
+            return isSameDay(d, selectedDay);
+          })}
+          onClose={() => setSelectedDay(null)}
+          onEntryClick={(entry) => { setSelectedDay(null); setSelectedEntry(entry); }}
+          onNewEvent={(date) => { setSelectedDay(null); handleOpenCreateForDate(date); }}
+        />
+      )}
+
       {showCreateModal && (
         <CreateEventModal
           {...(defaultEventDate !== undefined ? { defaultDate: defaultEventDate } : {})}
+          members={members}
+          currentUserId={user?.id}
           onSubmit={handleCreateEvent}
           onClose={() => setShowCreateModal(false)}
         />
@@ -218,7 +285,10 @@ export function CalendarPage() {
           currentUserId={user?.id ?? ''}
           onClose={() => setSelectedEntry(null)}
           {...(selectedEntry.kind === 'event'
-            ? { onDelete: (id: string) => { void handleDeleteEvent(id); } }
+            ? {
+                onDelete: (id: string) => { void handleDeleteEvent(id); },
+                onRsvp: handleRsvp,
+              }
             : {})}
         />
       )}

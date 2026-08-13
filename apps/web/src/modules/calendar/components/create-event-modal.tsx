@@ -1,10 +1,12 @@
 /**
  * CreateEventModal — form to create a new calendar event.
+ * Includes an attendee picker that searches workspace members.
  */
 
-import React, { useState } from 'react';
-import { X, Loader2, Calendar } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Loader2, Calendar, Users, Search, Check, UserPlus } from 'lucide-react';
 import type { CreateEventPayload } from '../types';
+import type { WorkspaceMember } from '../../workspace/types';
 
 const ACCENT_COLORS = [
   '#7c3aed', '#3b82f6', '#10b981', '#f59e0b',
@@ -13,11 +15,21 @@ const ACCENT_COLORS = [
 
 interface CreateEventModalProps {
   defaultDate?: Date | undefined;
+  /** All workspace members — passed from CalendarPage */
+  members?: WorkspaceMember[];
+  /** The current user's id — excluded from the picker (they're auto-added as creator) */
+  currentUserId?: string | undefined;
   onSubmit: (payload: CreateEventPayload) => Promise<void>;
   onClose: () => void;
 }
 
-export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEventModalProps) {
+export function CreateEventModal({
+  defaultDate,
+  members = [],
+  currentUserId,
+  onSubmit,
+  onClose,
+}: CreateEventModalProps) {
   const toLocalInput = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -38,6 +50,36 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Attendee picker state ──────────────────────────────────────────────────
+  const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Members excluding the creator (they're auto-added server-side)
+  const pickableMembers = useMemo(
+    () => members.filter((m) => m.userId !== currentUserId && m.user),
+    [members, currentUserId]
+  );
+
+  const filteredMembers = useMemo(() => {
+    const q = memberSearch.toLowerCase();
+    if (!q) return pickableMembers;
+    return pickableMembers.filter(
+      (m) =>
+        m.user!.name.toLowerCase().includes(q) ||
+        m.user!.email.toLowerCase().includes(q)
+    );
+  }, [pickableMembers, memberSearch]);
+
+  const toggleAttendee = (userId: string) => {
+    setAttendeeIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const selectedMembers = pickableMembers.filter((m) => attendeeIds.includes(m.userId));
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -51,6 +93,7 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
         endsAt: new Date(endsAt).toISOString(),
         isAllDay,
         color,
+        ...(attendeeIds.length > 0 && { attendeeIds }),
       });
       onClose();
     } catch (err) {
@@ -66,11 +109,11 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#0c0c0e] border border-[#1f1f23] rounded-xl overflow-hidden shadow-2xl"
+        className="w-full max-w-md bg-[#0c0c0e] border border-[#1f1f23] rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#1f1f23]">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#1f1f23] flex-shrink-0">
           <Calendar className="w-4 h-4 text-[#7c3aed]" />
           <h2 className="text-sm font-semibold text-[#fafafa] flex-1">New Event</h2>
           <button
@@ -81,8 +124,8 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+        {/* Form — scrollable */}
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
 
           {/* Title */}
           <div>
@@ -181,6 +224,113 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
             </div>
           </div>
 
+          {/* ── Attendees ──────────────────────────────────────────────────── */}
+          {pickableMembers.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-[#a1a1aa] uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-3 h-3" />
+                  Invite attendees
+                  <span className="normal-case font-normal text-[#52525b]">(optional)</span>
+                </label>
+                {!showPicker && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPicker(true)}
+                    className="flex items-center gap-1 text-[10px] text-[#7c3aed] hover:text-[#a78bfa] transition-colors"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    Add people
+                  </button>
+                )}
+              </div>
+
+              {/* Selected attendees chips */}
+              {selectedMembers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {selectedMembers.map((m) => (
+                    <span
+                      key={m.userId}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-[#7c3aed]/15 text-[#a78bfa] border border-[#7c3aed]/30"
+                    >
+                      <Avatar name={m.user!.name} size="xs" />
+                      {m.user!.name}
+                      <button
+                        type="button"
+                        onClick={() => toggleAttendee(m.userId)}
+                        className="ml-0.5 hover:text-[#f87171] transition-colors"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Picker dropdown */}
+              {showPicker && (
+                <div className="border border-[#27272a] rounded-lg bg-[#09090b] overflow-hidden">
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-[#1f1f23]">
+                    <Search className="w-3 h-3 text-[#52525b] flex-shrink-0" />
+                    <input
+                      autoFocus
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search members…"
+                      className="flex-1 bg-transparent text-xs text-[#fafafa] placeholder-[#52525b] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setShowPicker(false); setMemberSearch(''); }}
+                      className="text-[#52525b] hover:text-[#a1a1aa] transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Member list */}
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredMembers.length === 0 && (
+                      <p className="px-3 py-3 text-xs text-[#52525b] text-center">No members found</p>
+                    )}
+                    {filteredMembers.map((m) => {
+                      const selected = attendeeIds.includes(m.userId);
+                      return (
+                        <button
+                          key={m.userId}
+                          type="button"
+                          onClick={() => toggleAttendee(m.userId)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#1f1f23] transition-colors text-left"
+                        >
+                          <Avatar name={m.user!.name} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-[#fafafa] truncate">{m.user!.name}</p>
+                            <p className="text-[10px] text-[#52525b] truncate">{m.user!.email}</p>
+                          </div>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${selected ? 'bg-[#7c3aed] border-[#7c3aed]' : 'border-[#3f3f46]'}`}>
+                            {selected && <Check className="w-2.5 h-2.5 text-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Done button */}
+                  <div className="px-3 py-2 border-t border-[#1f1f23] flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowPicker(false); setMemberSearch(''); }}
+                      className="text-xs text-[#7c3aed] hover:text-[#a78bfa] transition-colors font-medium"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
             <p className="text-xs text-[#f87171] bg-[#27171a] border border-[#7f1d1d] px-3 py-2 rounded-md">
               {error}
@@ -203,10 +353,32 @@ export function CreateEventModal({ defaultDate, onSubmit, onClose }: CreateEvent
             >
               {saving && <Loader2 className="w-3 h-3 animate-spin" />}
               Create Event
+              {attendeeIds.length > 0 && (
+                <span className="ml-1 px-1.5 py-0 rounded-full bg-white/20 text-[10px]">
+                  +{attendeeIds.length}
+                </span>
+              )}
             </button>
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+// ── Tiny avatar ───────────────────────────────────────────────────────────────
+
+function Avatar({ name, size }: { name: string; size: 'xs' | 'sm' }) {
+  const initials = name
+    .split(' ')
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const dim = size === 'xs' ? 'w-3.5 h-3.5 text-[8px]' : 'w-6 h-6 text-[10px]';
+  return (
+    <span className={`${dim} rounded-full bg-[#27272a] text-[#a1a1aa] flex items-center justify-center font-medium flex-shrink-0`}>
+      {initials}
+    </span>
   );
 }

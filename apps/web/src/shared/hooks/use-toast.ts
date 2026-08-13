@@ -1,7 +1,7 @@
 import { useToastStore, type ToastVariant } from '../components/toast';
 
 function show(variant: ToastVariant, title: string, body?: string) {
-  useToastStore.getState().add({ variant, title, body });
+  useToastStore.getState().add({ variant, title, ...(body !== undefined && { body }) });
 }
 
 /**

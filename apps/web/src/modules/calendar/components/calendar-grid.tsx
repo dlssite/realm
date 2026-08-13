@@ -21,6 +21,8 @@ interface CalendarGridProps {
   entries: CalendarEntry[];
   onDayClick: (date: Date) => void;
   onEntryClick: (entry: CalendarEntry) => void;
+  /** Called when the user clicks the "+N more" overflow indicator */
+  onOverflowClick?: (date: Date) => void;
 }
 
 export function CalendarGrid({
@@ -28,6 +30,7 @@ export function CalendarGrid({
   entries,
   onDayClick,
   onEntryClick,
+  onOverflowClick,
 }: CalendarGridProps) {
   const cells = getMonthGrid(month);
 
@@ -98,11 +101,22 @@ export function CalendarGrid({
                   <EventChip
                     key={i}
                     entry={entry}
-                    onClick={() => onEntryClick(entry)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEntryClick(entry);
+                    }}
                   />
                 ))}
                 {overflow > 0 && (
-                  <p className="text-[10px] text-[#52525b] pl-1">+{overflow}</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      (onOverflowClick ?? onDayClick)(day);
+                    }}
+                    className="text-[10px] text-[#52525b] hover:text-[#a1a1aa] pl-1 transition-colors"
+                  >
+                    +{overflow} more
+                  </button>
                 )}
               </div>
               {/* Mobile: show dot indicators instead of full chips */}
@@ -118,7 +132,15 @@ export function CalendarGrid({
                     />
                   ))}
                   {dayEntries.length > 3 && (
-                    <span className="text-[8px] text-[#52525b]">+{dayEntries.length - 3}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        (onOverflowClick ?? onDayClick)(day);
+                      }}
+                      className="text-[8px] text-[#52525b] hover:text-[#a1a1aa] transition-colors"
+                    >
+                      +{dayEntries.length - 3}
+                    </button>
                   )}
                 </div>
               )}

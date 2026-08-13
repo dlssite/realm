@@ -1,17 +1,20 @@
 /**
  * EventDetailModal — slide-up overlay showing full event/task/milestone details.
+ * For custom events: shows RSVP action buttons for the current user if they are an attendee.
  */
 
-import React from 'react';
-import { X, Calendar, CheckSquare, Flag, Clock, Users, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Calendar, CheckSquare, Flag, Clock, Users, Trash2, Check, Minus, X as XIcon, Loader2 } from 'lucide-react';
 import { formatTime, formatShortDate } from '../utils/calendar-utils';
-import type { CalendarEntry } from '../types';
+import type { CalendarEntry, RsvpStatus } from '../types';
 
 interface EventDetailModalProps {
   entry: CalendarEntry;
   currentUserId: string;
   onClose: () => void;
   onDelete?: ((eventId: string) => void) | undefined;
+  /** Called when the current user submits an RSVP response */
+  onRsvp?: (eventId: string, rsvp: 'ACCEPTED' | 'DECLINED' | 'MAYBE') => Promise<void>;
 }
 
 export function EventDetailModal({
@@ -19,6 +22,7 @@ export function EventDetailModal({
   currentUserId,
   onClose,
   onDelete,
+  onRsvp,
 }: EventDetailModalProps) {
   const isCustomEvent = entry.kind === 'event';
   const isTask = entry.kind === 'task';
@@ -26,8 +30,39 @@ export function EventDetailModal({
 
   const canDelete =
     isCustomEvent &&
-    (entry.createdById === currentUserId) &&
+    entry.createdById === currentUserId &&
     onDelete != null;
+
+  // ── RSVP state ─────────────────────────────────────────────────────────────
+  // Find the current user's attendee record (if they are an attendee)
+  const myAttendee = isCustomEvent
+    ? entry.attendees.find((a) => a.user.id === currentUserId)
+    : undefined;
+
+  const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus | undefined>(myAttendee?.rsvp);
+  const [rsvpLoading, setRsvpLoading] = useState<'ACCEPTED' | 'DECLINED' | 'MAYBE' | null>(null);
+  const [rsvpError, setRsvpError] = useState<string | null>(null);
+
+  const handleRsvp = async (rsvp: 'ACCEPTED' | 'DECLINED' | 'MAYBE') => {
+    if (!onRsvp || !isCustomEvent || rsvp === rsvpStatus) return;
+    setRsvpLoading(rsvp);
+    setRsvpError(null);
+    try {
+      await onRsvp(entry.id, rsvp);
+      setRsvpStatus(rsvp);
+    } catch (err) {
+      setRsvpError(err instanceof Error ? err.message : 'Failed to update RSVP');
+    } finally {
+      setRsvpLoading(null);
+    }
+  };
+
+  // Show RSVP section if: user is an attendee, is not the creator (creator is auto-ACCEPTED), and onRsvp is wired
+  const showRsvpActions =
+    isCustomEvent &&
+    myAttendee !== undefined &&
+    entry.createdById !== currentUserId &&
+    onRsvp != null;
 
   return (
     <div
@@ -38,7 +73,7 @@ export function EventDetailModal({
         className="w-full max-w-md bg-[#0c0c0e] border border-[#1f1f23] rounded-xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header stripe */}
+        {/* Header colour stripe */}
         {isCustomEvent && (
           <div className="h-1 w-full" style={{ backgroundColor: entry.color }} />
         )}
@@ -102,17 +137,77 @@ export function EventDetailModal({
             </div>
           )}
 
-          {/* Attendees (custom events only) */}
+          {/* ── RSVP action buttons (attendee who is not the creator) ────── */}
+          {showRsvpActions && (
+            <div className="rounded-lg border border-[#27272a] bg-[#111113] px-3 py-3 space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#52525b]">
+                Your response
+              </p>
+
+              <div className="flex items-center gap-2">
+                <RsvpButton
+                  label="Accept"
+                  icon={<Check className="w-3 h-3" />}
+                  value="ACCEPTED"
+                  current={rsvpStatus}
+                  loading={rsvpLoading}
+                  activeClass="bg-[#4ade80]/15 text-[#4ade80] border-[#4ade80]/40"
+                  inactiveClass="bg-[#1f1f23] text-[#71717a] border-[#27272a] hover:border-[#4ade80]/40 hover:text-[#4ade80]"
+                  onClick={() => handleRsvp('ACCEPTED')}
+                />
+                <RsvpButton
+                  label="Maybe"
+                  icon={<Minus className="w-3 h-3" />}
+                  value="MAYBE"
+                  current={rsvpStatus}
+                  loading={rsvpLoading}
+                  activeClass="bg-[#fb923c]/15 text-[#fb923c] border-[#fb923c]/40"
+                  inactiveClass="bg-[#1f1f23] text-[#71717a] border-[#27272a] hover:border-[#fb923c]/40 hover:text-[#fb923c]"
+                  onClick={() => handleRsvp('MAYBE')}
+                />
+                <RsvpButton
+                  label="Decline"
+                  icon={<XIcon className="w-3 h-3" />}
+                  value="DECLINED"
+                  current={rsvpStatus}
+                  loading={rsvpLoading}
+                  activeClass="bg-[#f87171]/15 text-[#f87171] border-[#f87171]/40"
+                  inactiveClass="bg-[#1f1f23] text-[#71717a] border-[#27272a] hover:border-[#f87171]/40 hover:text-[#f87171]"
+                  onClick={() => handleRsvp('DECLINED')}
+                />
+              </div>
+
+              {rsvpError && (
+                <p className="text-[10px] text-[#f87171]">{rsvpError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Attendees list (custom events only) */}
           {isCustomEvent && entry.attendees.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-[#52525b]">
                 <Users className="w-3 h-3" />
                 Attendees
+                <span className="ml-auto font-normal normal-case tracking-normal text-[#3f3f46]">
+                  {entry.attendees.filter((a) => a.rsvp === 'ACCEPTED').length}/{entry.attendees.length} accepted
+                </span>
               </div>
               <div className="space-y-1">
                 {entry.attendees.map((att) => (
-                  <div key={att.user.id} className="flex items-center justify-between">
-                    <span className="text-xs text-[#a1a1aa]">{att.user.name}</span>
+                  <div key={att.user.id} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* Mini avatar */}
+                      <span className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] text-[9px] font-semibold flex items-center justify-center flex-shrink-0">
+                        {att.user.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                      </span>
+                      <span className="text-xs text-[#a1a1aa] truncate">
+                        {att.user.name}
+                        {att.user.id === entry.createdById && (
+                          <span className="ml-1 text-[10px] text-[#52525b]">(organiser)</span>
+                        )}
+                      </span>
+                    </div>
                     <RsvpBadge rsvp={att.rsvp} />
                   </div>
                 ))}
@@ -129,7 +224,7 @@ export function EventDetailModal({
           )}
         </div>
 
-        {/* Footer actions */}
+        {/* Footer — delete */}
         {canDelete && (
           <div className="px-5 py-3 border-t border-[#1f1f23] flex justify-end">
             <button
@@ -146,7 +241,35 @@ export function EventDetailModal({
   );
 }
 
-// ── RSVP badge ────────────────────────────────────────────────────────────────
+// ── RSVP action button ─────────────────────────────────────────────────────────
+
+interface RsvpButtonProps {
+  label: string;
+  icon: React.ReactNode;
+  value: 'ACCEPTED' | 'DECLINED' | 'MAYBE';
+  current: RsvpStatus | undefined;
+  loading: 'ACCEPTED' | 'DECLINED' | 'MAYBE' | null;
+  activeClass: string;
+  inactiveClass: string;
+  onClick: () => void;
+}
+
+function RsvpButton({ label, icon, value, current, loading, activeClass, inactiveClass, onClick }: RsvpButtonProps) {
+  const isActive = current === value;
+  const isLoading = loading === value;
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading !== null}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium flex-1 justify-center transition-all disabled:opacity-60 ${isActive ? activeClass : inactiveClass}`}
+    >
+      {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : icon}
+      {label}
+    </button>
+  );
+}
+
+// ── RSVP read-only badge ───────────────────────────────────────────────────────
 
 function RsvpBadge({ rsvp }: { rsvp: string }) {
   const map: Record<string, string> = {
@@ -156,7 +279,7 @@ function RsvpBadge({ rsvp }: { rsvp: string }) {
     PENDING: 'text-[#71717a] bg-[#71717a]/10',
   };
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${map[rsvp] ?? map.PENDING}`}>
+    <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${map[rsvp] ?? map['PENDING']}`}>
       {rsvp.toLowerCase()}
     </span>
   );

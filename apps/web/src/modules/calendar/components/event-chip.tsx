@@ -9,7 +9,7 @@ import type { CalendarEntry } from '../types';
 
 interface EventChipProps {
   entry: CalendarEntry;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
 }
 
 export function EventChip({ entry, onClick }: EventChipProps) {
