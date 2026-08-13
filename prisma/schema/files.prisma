@@ -8,11 +8,12 @@ model FileRecord {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  workspaceId String  @map("workspace_id") @db.Uuid
-  uploadedById String @map("uploaded_by_id") @db.Uuid
+  workspaceId  String  @map("workspace_id") @db.Uuid
+  uploadedById String  @map("uploaded_by_id") @db.Uuid
 
-  // Optional scoping — file can belong to a project
+  // Optional scoping — file can belong to a project and/or a team
   projectId   String? @map("project_id") @db.Uuid
+  teamId      String? @map("team_id") @db.Uuid
 
   // Storage
   storageKey  String  @map("storage_key") @db.VarChar(1024) // MinIO object key
@@ -25,10 +26,12 @@ model FileRecord {
   workspace  Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   uploadedBy User           @relation("UploadedFiles", fields: [uploadedById], references: [id])
   project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  team       Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
   versions   FileVersion[]
 
   @@index([workspaceId])
   @@index([projectId])
+  @@index([teamId])
   @@index([deletedAt])
   @@map("file_records")
 }

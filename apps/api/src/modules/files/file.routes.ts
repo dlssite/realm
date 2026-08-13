@@ -28,6 +28,7 @@ const uploadUrlSchema = z.object({
   filename: z.string().min(1).max(512),
   contentType: z.string().min(1).max(255),
   projectId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
 });
 
 const confirmUploadSchema = z.object({
@@ -36,10 +37,12 @@ const confirmUploadSchema = z.object({
   contentType: z.string().min(1).max(255),
   sizeBytes: z.number().int().positive(),
   projectId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
 });
 
 const listQuerySchema = z.object({
   projectId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().uuid().optional(),
 });
@@ -103,7 +106,7 @@ export async function fileRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const { storageKey, filename, contentType, sizeBytes, projectId } = parse.data;
+      const { storageKey, filename, contentType, sizeBytes, projectId, teamId } = parse.data;
 
       // Verify the object actually landed in MinIO before creating the DB record
       const exists = await objectExists(storageKey);
@@ -118,6 +121,7 @@ export async function fileRoutes(fastify: FastifyInstance) {
           workspaceId,
           uploadedById: request.user!.id,
           projectId: projectId ?? null,
+          teamId:    teamId    ?? null,
           storageKey,
           bucket: BUCKET,
           filename,
@@ -132,6 +136,9 @@ export async function fileRoutes(fastify: FastifyInstance) {
           sizeBytes: true,
           storageKey: true,
           projectId: true,
+          project: { select: { id: true, name: true, identifier: true } },
+          teamId: true,
+          team: { select: { id: true, name: true } },
           uploadedBy: { select: { id: true, name: true, avatarUrl: true } },
         },
       });
@@ -144,12 +151,19 @@ export async function fileRoutes(fastify: FastifyInstance) {
   );
 
   // ── GET /:workspaceId/files ─────────────────────────────────────────────
+  // Permission model:
+  //   OWNER / ADMIN / MANAGER → see all files in the workspace
+  //   MEMBER / GUEST          → see only:
+  //     • workspace-scoped files (projectId IS NULL)
+  //     • files belonging to projects they are explicitly a member of
+  //     • files belonging to projects owned by teams they are a member of
   fastify.get(
     '/:workspaceId/files',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { workspaceId } = request.params as { workspaceId: string };
+      const userId = request.user!.id;
 
-      const member = await assertMember(workspaceId, request.user!.id);
+      const member = await assertMember(workspaceId, userId);
       if (!member) {
         return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Not a workspace member' } });
       }
@@ -159,13 +173,84 @@ export async function fileRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Invalid query params' } });
       }
 
-      const { projectId, limit, cursor } = parseQ.data;
+      const { projectId, teamId, limit, cursor } = parseQ.data;
+      const isElevated = ['OWNER', 'ADMIN', 'MANAGER'].includes(member.role);
+
+      // Build visibility filter for non-elevated members
+      let scopeFilter: object = {};
+
+      if (!isElevated) {
+        if (projectId || teamId) {
+          // Specific scope requested — verify membership
+          if (projectId) {
+            const canSee = await (async () => {
+              const pm = await prisma.projectMember.findUnique({
+                where: { projectId_userId: { projectId, userId } },
+              });
+              if (pm) return true;
+              const proj = await prisma.project.findUnique({
+                where: { id: projectId }, select: { teamId: true },
+              });
+              if (!proj?.teamId) return false;
+              return !!(await prisma.teamMember.findFirst({
+                where: { teamId: proj.teamId, userId },
+              }));
+            })();
+            if (!canSee) return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'You are not a member of that project' } });
+            scopeFilter = { projectId };
+          } else if (teamId) {
+            const isMember = await prisma.teamMember.findFirst({
+              where: { teamId, userId },
+            });
+            if (!isMember) return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'You are not a member of that team' } });
+            scopeFilter = { teamId };
+          }
+        } else {
+          // No specific scope — build full visibility set
+          const [explicitProjects, teamMemberships] = await Promise.all([
+            prisma.projectMember.findMany({ where: { userId }, select: { projectId: true } }),
+            prisma.teamMember.findMany({
+              where: { userId, team: { workspaceId } },
+              select: { teamId: true },
+            }),
+          ]);
+
+          const memberTeamIds = teamMemberships.map(tm => tm.teamId);
+
+          const teamProjects = memberTeamIds.length > 0
+            ? await prisma.project.findMany({
+                where: { workspaceId, teamId: { in: memberTeamIds }, deletedAt: null },
+                select: { id: true },
+              })
+            : [];
+
+          const accessibleProjectIds = [
+            ...new Set([
+              ...explicitProjects.map(p => p.projectId),
+              ...teamProjects.map(p => p.id),
+            ]),
+          ];
+
+          // Visible: workspace-scoped OR in accessible project OR in accessible team
+          scopeFilter = {
+            OR: [
+              { projectId: null, teamId: null },
+              ...(accessibleProjectIds.length > 0 ? [{ projectId: { in: accessibleProjectIds } }] : []),
+              ...(memberTeamIds.length > 0         ? [{ teamId:    { in: memberTeamIds } }]         : []),
+            ],
+          };
+        }
+      } else {
+        // Elevated: respect optional scope filters
+        if (projectId) scopeFilter = { projectId };
+        else if (teamId) scopeFilter = { teamId };
+      }
 
       const files = await prisma.fileRecord.findMany({
         where: {
           workspaceId,
           deletedAt: null,
-          ...(projectId ? { projectId } : {}),
+          ...scopeFilter,
           ...(cursor ? { id: { lt: cursor } } : {}),
         },
         select: {
@@ -176,6 +261,8 @@ export async function fileRoutes(fastify: FastifyInstance) {
           sizeBytes: true,
           projectId: true,
           project: { select: { id: true, name: true, identifier: true } },
+          teamId: true,
+          team:    { select: { id: true, name: true } },
           uploadedBy: { select: { id: true, name: true, avatarUrl: true } },
         },
         orderBy: { createdAt: 'desc' },

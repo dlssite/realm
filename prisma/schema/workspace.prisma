@@ -70,6 +70,7 @@ model Team {
   channels  Channel[]
   wikiPages  WikiPage[]
   calendarEvents CalendarEvent[]
+  fileRecords    FileRecord[]
 
   @@index([workspaceId])
   @@index([leaderId])

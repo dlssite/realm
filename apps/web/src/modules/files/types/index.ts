@@ -12,6 +12,11 @@ export interface FileProject {
   identifier: string;
 }
 
+export interface FileTeam {
+  id: string;
+  name: string;
+}
+
 export interface FileRecord {
   id: string;
   createdAt: string;
@@ -21,6 +26,8 @@ export interface FileRecord {
   sizeBytes: string;
   projectId: string | null;
   project: FileProject | null;
+  teamId: string | null;
+  team: FileTeam | null;
   uploadedBy: FileUploader;
 }
 
@@ -36,6 +43,7 @@ export interface ConfirmUploadPayload {
   contentType: string;
   sizeBytes: number;
   projectId?: string;
+  teamId?: string;
 }
 
 export interface DownloadUrlResponse {
