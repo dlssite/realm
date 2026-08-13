@@ -10,6 +10,7 @@ COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 COPY turbo.json ./
+COPY tsconfig.base.json ./
 
 # Package manifests for layer caching
 COPY packages/types/package.json      ./packages/types/
