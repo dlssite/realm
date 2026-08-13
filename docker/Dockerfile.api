@@ -1,7 +1,8 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-# Install pnpm
+# Install pnpm + openssl (required by Prisma engine)
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
@@ -31,7 +32,7 @@ COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
 # Step 1: Merge all prisma/schema/*.prisma → prisma/schema.prisma
 RUN node ./scripts/merge-prisma.js
 
-# Step 2: Generate Prisma client from the merged schema (matches pnpm run prisma:generate)
+# Step 2: Generate Prisma client from the merged schema
 RUN pnpm exec prisma generate --schema prisma/schema.prisma
 
 # Copy full source and build
@@ -43,6 +44,9 @@ RUN pnpm --filter @realm/api exec tsc
 
 # ── Stage 2: Production image ─────────────────────────────────────────────────
 FROM node:20-alpine AS runner
+
+# Install openssl — required by Prisma query engine at runtime
+RUN apk add --no-cache openssl
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
@@ -66,27 +70,28 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy compiled output from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
-# Copy prisma CLI from builder (it's a devDep, not available in prod install)
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# Copy prisma CLI + engines from builder (devDep, not in prod install)
+COPY --from=builder /app/node_modules/.bin/prisma       ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma            ./node_modules/prisma
+COPY --from=builder /app/node_modules/.pnpm/prisma@5.17.0 \
+     ./node_modules/.pnpm/prisma@5.17.0
 
 # Copy the generated Prisma client from builder
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0 \
      ./node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0
 
-# Copy the MERGED schema.prisma (needed for migrate deploy at startup)
-# The fragment folder is not needed at runtime — only the merged file is.
+# Copy Prisma engines (the actual query/migration binaries)
+COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.17.0 \
+     ./node_modules/.pnpm/@prisma+engines@5.17.0
+
+# Copy the merged schema.prisma (needed for migrate deploy at startup)
 COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
+COPY --from=builder /app/prisma/migrations    ./prisma/migrations
 
-# Copy merge script so the entrypoint can re-merge if needed in future
+# Copy merge script
 COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
-
-# Non-root user for security
-RUN addgroup -S realm && adduser -S realm -G realm
-USER realm
 
 EXPOSE 4000
 
-# Run migrations against the MERGED schema.prisma, then start the server.
-# This mirrors the project's prisma:migrate script convention.
+# Run migrations then start the server
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]
