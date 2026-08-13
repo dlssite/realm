@@ -6,9 +6,8 @@ import { ChatCanvas } from '../components/chat-canvas';
 import { CreateChannelModal } from '../components/create-channel-modal';
 
 export default function ChatPage() {
-  const { workspace } = useAuthStore();
+  const { workspace, user } = useAuthStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  // On mobile the channel sidebar is hidden by default; user opens it with the menu button
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const {
@@ -30,24 +29,26 @@ export default function ChatPage() {
     fetchChannels();
     connectWs();
     return () => { disconnectWs(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.id]);
 
-  const activeChannel = channels.find((c) => c.id === activeChannelId) || null;
-  const activeMessages = activeChannelId ? messages[activeChannelId] || [] : [];
-  const activeTyping = activeChannelId ? typingUsers[activeChannelId] || [] : [];
+  const activeChannel = channels.find(c => c.id === activeChannelId) ?? null;
+  const activeMessages = activeChannelId ? (messages[activeChannelId] ?? []) : [];
+  const activeTyping   = activeChannelId ? (typingUsers[activeChannelId] ?? []) : [];
 
-  const isAdminOrOwner = true;
+  // Derive real isAdminOrOwner from the workspace-level role stored in auth
+  const wsRole = workspace?.role;
+  const isAdminOrOwner = wsRole === 'OWNER' || wsRole === 'ADMIN';
 
   const handleSelectChannel = (id: string) => {
     setActiveChannelId(id);
-    // Auto-close mobile sidebar after selecting a channel
     setIsMobileSidebarOpen(false);
   };
 
   return (
     <div className="flex h-full w-full bg-[#060608] overflow-hidden relative">
 
-      {/* ── Mobile sidebar overlay backdrop ── */}
+      {/* Mobile backdrop */}
       {isMobileSidebarOpen && (
         <div
           className="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
@@ -55,9 +56,7 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ── Channel Sidebar ──
-           Desktop: always visible (w-64 static)
-           Mobile:  slide-over from left, hidden by default */}
+      {/* Channel sidebar */}
       <div
         className={`
           fixed md:static inset-y-0 left-0 z-40
@@ -75,7 +74,7 @@ export default function ChatPage() {
         />
       </div>
 
-      {/* ── Main Chat Canvas ── */}
+      {/* Main canvas */}
       <ChatCanvas
         channel={activeChannel}
         messages={activeMessages}
@@ -87,7 +86,7 @@ export default function ChatPage() {
         onOpenSidebar={() => setIsMobileSidebarOpen(true)}
       />
 
-      {/* Create Custom Channel Modal */}
+      {/* Create channel modal */}
       <CreateChannelModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

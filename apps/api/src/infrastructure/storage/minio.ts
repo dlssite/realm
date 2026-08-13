@@ -21,8 +21,21 @@ const port = Number(process.env.MINIO_PORT ?? 9000);
 const useSSL = process.env.MINIO_USE_SSL === 'true';
 const protocol = useSSL ? 'https' : 'http';
 
+/** Internal endpoint the SDK connects to (may be a Docker service name). */
+const internalEndpoint = `${protocol}://${endpoint}:${port}`;
+
+/**
+ * Optional public base URL rewritten into every presigned URL before it is
+ * sent to the browser.  Required when:
+ *  - MinIO runs on an internal hostname (e.g. Docker service "minio"), OR
+ *  - The app is served over HTTPS (browser blocks mixed http:// requests).
+ *
+ * Example value: https://minio.sanctyr.cloud
+ */
+const publicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') ?? null;
+
 export const s3 = new S3Client({
-  endpoint: `${protocol}://${endpoint}:${port}`,
+  endpoint: internalEndpoint,
   region: 'us-east-1', // MinIO ignores region but the SDK requires one
   credentials: {
     accessKeyId: process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
@@ -33,6 +46,33 @@ export const s3 = new S3Client({
 });
 
 export const BUCKET = process.env.MINIO_BUCKET ?? 'realm-files';
+
+// ── URL rewriter ──────────────────────────────────────────────────────────────
+
+/**
+ * Replace the internal MinIO origin in a presigned URL with the public URL.
+ *
+ * The AWS SDK signs the URL using the internal endpoint.  If MINIO_PUBLIC_URL
+ * is set we swap the origin so the browser hits the public host instead of
+ * the Docker-internal one (which it cannot reach and which would also trigger
+ * a mixed-content block when the app is served over HTTPS).
+ *
+ * The HMAC signature stays valid because MinIO / S3 signs the path + query
+ * string, not the host header, so changing the host in the URL is safe as
+ * long as the MinIO server accepts requests on that public hostname too.
+ */
+function rewriteToPublicUrl(presignedUrl: string): string {
+  if (!publicUrl) return presignedUrl;
+
+  const parsed = new URL(presignedUrl);
+  const target = new URL(publicUrl);
+
+  parsed.protocol = target.protocol;
+  parsed.hostname = target.hostname;
+  parsed.port = target.port; // '' if the public URL has no explicit port
+
+  return parsed.toString();
+}
 
 // ── Presigned upload URL ──────────────────────────────────────────────────────
 
@@ -62,7 +102,9 @@ export async function createPresignedUploadUrl(
     ContentType: contentType,
   });
 
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn });
+  const uploadUrl = rewriteToPublicUrl(
+    await getSignedUrl(s3, command, { expiresIn })
+  );
   return { uploadUrl, storageKey };
 }
 
@@ -85,7 +127,7 @@ export async function createPresignedDownloadUrl(
     Key: storageKey,
   });
 
-  return getSignedUrl(s3, command, { expiresIn });
+  return rewriteToPublicUrl(await getSignedUrl(s3, command, { expiresIn }));
 }
 
 // ── Delete object ─────────────────────────────────────────────────────────────

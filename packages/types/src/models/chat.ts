@@ -1,5 +1,8 @@
 export type ChannelType = 'GENERAL' | 'TEAM' | 'PROJECT' | 'CUSTOM';
 
+/** Role a user holds specifically within a channel (separate from workspace role) */
+export type ChannelRole = 'ADMIN' | 'LEADER' | 'MEMBER';
+
 export interface ChatAttachment {
   url: string;
   filename: string;
@@ -36,6 +39,21 @@ export interface ChatMessageDto {
   replyCount?: number;
 }
 
+/** A member of a specific channel with their channel-level role */
+export interface ChannelMemberDto {
+  id: string;
+  userId: string;
+  channelId: string;
+  role: ChannelRole;
+  lastReadAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+  };
+}
+
 export interface ChannelDto {
   id: string;
   createdAt: string;
@@ -60,6 +78,8 @@ export interface ChannelDto {
   membersCount?: number;
   unreadCount?: number;
   lastMessage?: ChatMessageDto | null;
+  /** The current user's channel-level role (resolved server-side) */
+  currentUserRole?: ChannelRole | null;
 }
 
 // WebSocket Event Types
@@ -73,6 +93,7 @@ export enum WsEventType {
   TYPING_START = 'typing_start',
   TYPING_STOP = 'typing_stop',
   PRESENCE = 'presence',
+  MEMBER_ROLE_UPDATED = 'member_role_updated',
   ERROR = 'error',
 }
 
