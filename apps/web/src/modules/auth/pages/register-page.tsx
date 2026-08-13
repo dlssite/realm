@@ -44,6 +44,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#09090b] text-[#fafafa] font-sans px-4">
       <div className="w-full max-w-sm bg-[#0c0c0e] border border-[#1f1f23] rounded-lg p-8 shadow-xl">
         <div className="mb-8 text-center">
+          <img src="/logo.png" alt="Realm" className="w-12 h-12 mx-auto mb-4 rounded-xl" />
           <h2 className="text-2xl font-bold tracking-tight">Create Workspace</h2>
           <p className="text-xs text-[#a1a1aa] mt-2">Initialize your modular workspace OS</p>
         </div>
