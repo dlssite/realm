@@ -22,8 +22,14 @@ COPY apps/web/package.json            ./apps/web/
 
 RUN pnpm install --frozen-lockfile
 
-# Copy full source
+# Build workspace packages first so their dist/ exists for Vite
 COPY packages ./packages
+RUN pnpm --filter @realm/types build
+RUN pnpm --filter @realm/utils build
+RUN pnpm --filter @realm/config build
+RUN pnpm --filter @realm/sdk build
+
+# Copy web source
 COPY apps/web ./apps/web
 
 # Build args — injected at build time by docker-compose (must match VITE_ prefix)
