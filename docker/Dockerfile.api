@@ -25,21 +25,25 @@ COPY apps/api/package.json            ./apps/api/
 # Install all dependencies (workspace-aware)
 RUN pnpm install --frozen-lockfile
 
+# Copy full packages source and build them so dist/ exists before API build
+COPY packages ./packages
+RUN pnpm --filter @realm/types build
+RUN pnpm --filter @realm/utils build
+RUN pnpm --filter @realm/config build
+RUN pnpm --filter @realm/sdk build
+
 # Copy prisma fragments + merge script
 COPY prisma ./prisma
 COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
 
-# Step 1: Merge all prisma/schema/*.prisma → prisma/schema.prisma
+# Merge all prisma/schema/*.prisma → prisma/schema.prisma
 RUN node ./scripts/merge-prisma.js
 
-# Step 2: Generate Prisma client from the merged schema
+# Generate Prisma client from the merged schema
 RUN pnpm exec prisma generate --schema prisma/schema.prisma
 
-# Copy full source and build
-COPY packages ./packages
+# Copy API source and build
 COPY apps/api ./apps/api
-
-# Build TypeScript → dist/
 RUN pnpm --filter @realm/api exec tsc
 
 # ── Stage 2: Production image ─────────────────────────────────────────────────
@@ -47,7 +51,6 @@ FROM node:20-alpine AS runner
 
 # Install openssl — required by Prisma query engine at runtime
 RUN apk add --no-cache openssl
-
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
@@ -67,29 +70,31 @@ COPY apps/api/package.json            ./apps/api/
 # Production deps only
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy compiled output from builder
+# Copy compiled API output
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
+# Copy compiled workspace packages (built dist/ folders)
+COPY --from=builder /app/packages/types/dist  ./packages/types/dist
+COPY --from=builder /app/packages/utils/dist  ./packages/utils/dist
+COPY --from=builder /app/packages/config/dist ./packages/config/dist
+COPY --from=builder /app/packages/sdk/dist    ./packages/sdk/dist
+
 # Copy prisma CLI + engines from builder (devDep, not in prod install)
-COPY --from=builder /app/node_modules/.bin/prisma       ./node_modules/.bin/prisma
-COPY --from=builder /app/node_modules/prisma            ./node_modules/prisma
-COPY --from=builder /app/node_modules/.pnpm/prisma@5.17.0 \
-     ./node_modules/.pnpm/prisma@5.17.0
+COPY --from=builder /app/node_modules/.bin/prisma         ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma              ./node_modules/prisma
+COPY --from=builder /app/node_modules/.pnpm/prisma@5.17.0 ./node_modules/.pnpm/prisma@5.17.0
 
 # Copy the generated Prisma client from builder
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0 \
      ./node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0
 
-# Copy Prisma engines (the actual query/migration binaries)
+# Copy Prisma engines (query/migration binaries)
 COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.17.0 \
      ./node_modules/.pnpm/@prisma+engines@5.17.0
 
-# Copy the merged schema.prisma (needed for migrate deploy at startup)
+# Copy merged schema + migrations (needed for migrate deploy at startup)
 COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
 COPY --from=builder /app/prisma/migrations    ./prisma/migrations
-
-# Copy merge script
-COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
 
 EXPOSE 4000
 
