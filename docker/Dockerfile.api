@@ -66,6 +66,10 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy compiled output from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
+# Copy prisma CLI from builder (it's a devDep, not available in prod install)
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+
 # Copy the generated Prisma client from builder
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0 \
      ./node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0
@@ -85,4 +89,4 @@ EXPOSE 4000
 
 # Run migrations against the MERGED schema.prisma, then start the server.
 # This mirrors the project's prisma:migrate script convention.
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]
