@@ -11,6 +11,7 @@ COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 COPY turbo.json ./
+COPY tsconfig.base.json ./
 
 # Copy all package manifests before source so dep installs are cached
 COPY packages/types/package.json      ./packages/types/
