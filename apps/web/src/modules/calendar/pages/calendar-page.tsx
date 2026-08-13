@@ -13,6 +13,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import { fetchFeed, createEvent, deleteEvent } from '../api/calendar-api';
 import { CalendarGrid } from '../components/calendar-grid';
 import { CreateEventModal } from '../components/create-event-modal';
@@ -25,6 +26,7 @@ import type { CalendarEntry, CalendarFeed, CreateEventPayload } from '../types';
 
 export function CalendarPage() {
   const { token, workspace, user } = useAuthStore();
+  const { toast } = useToast();
 
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date();
@@ -88,17 +90,27 @@ export function CalendarPage() {
 
   const handleCreateEvent = async (payload: CreateEventPayload) => {
     if (!token || !workspace) return;
-    const newEvent = await createEvent(token, workspace.id, payload);
-    setFeed((prev) => ({ ...prev, events: [...prev.events, newEvent] }));
+    try {
+      const newEvent = await createEvent(token, workspace.id, payload);
+      setFeed((prev) => ({ ...prev, events: [...prev.events, newEvent] }));
+      toast.success('Event created', payload.title);
+    } catch {
+      toast.error('Failed to create event');
+    }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!token || !workspace) return;
-    await deleteEvent(token, workspace.id, eventId);
-    setFeed((prev) => ({
-      ...prev,
-      events: prev.events.filter((e) => e.id !== eventId),
-    }));
+    try {
+      await deleteEvent(token, workspace.id, eventId);
+      setFeed((prev) => ({
+        ...prev,
+        events: prev.events.filter((e) => e.id !== eventId),
+      }));
+      toast.info('Event deleted');
+    } catch {
+      toast.error('Failed to delete event');
+    }
   };
 
   return (

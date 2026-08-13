@@ -39,7 +39,7 @@ import {
 import CommandPaletteModal from '../../modules/search/components/CommandPaletteModal';
 
 export function AppLayout() {
-  const { user, workspace, token, setAuth, clearAuth } = useAuthStore();
+  const { user, workspace, token, setAuth, switchWorkspace, clearAuth } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
@@ -187,7 +187,7 @@ export function AppLayout() {
   };
 
   const handleWorkspaceSwitch = (ws: { id: string; name: string; slug: string; role: string }) => {
-    setAuth(user!, { id: ws.id, name: ws.name, slug: ws.slug } as any, token!);
+    switchWorkspace({ id: ws.id, name: ws.name, slug: ws.slug } as any);
     setIsWorkspaceSwitcherOpen(false);
     navigate('/dashboard');
   };

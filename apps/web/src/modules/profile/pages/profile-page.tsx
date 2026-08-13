@@ -9,6 +9,7 @@ import {
   LucideProps,
 } from 'lucide-react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import { fetchProfile, updateProfile, changePassword } from '../api/profile-api';
 import { ProfileAvatar } from '../components/profile-avatar';
 import { ProfilePasswordForm } from '../components/profile-password-form';
@@ -54,6 +55,7 @@ function Section({
 
 export function ProfilePage() {
   const { user, workspace, token, setAuth } = useAuthStore();
+  const { toast } = useToast();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,9 +98,12 @@ export function ProfilePage() {
       // Keep auth store in sync so the sidebar initial/name updates immediately
       if (user) setAuth({ ...user, name: updated.name }, workspace, token);
       setNameSuccess(true);
+      toast.success('Name updated');
       setTimeout(() => setNameSuccess(false), 3000);
     } catch (err: unknown) {
-      setNameError(err instanceof Error ? err.message : 'Failed to save.');
+      const msg = err instanceof Error ? err.message : 'Failed to save.';
+      setNameError(msg);
+      toast.error('Failed to update name', msg);
     } finally {
       setNameSaving(false);
     }
@@ -109,7 +114,6 @@ export function ProfilePage() {
     setAvatarSaving(true);
     try {
       const updated = await updateProfile(token, { avatarUrl: url });
-      // Merge — PATCH returns only scalar fields, preserve workspaceMembers
       setProfile((prev) => prev ? { ...prev, ...updated } : prev);
       if (user) {
         const next = { ...user };
@@ -117,6 +121,9 @@ export function ProfilePage() {
         else delete next.avatarUrl;
         setAuth(next, workspace, token);
       }
+      toast.success('Avatar updated');
+    } catch {
+      toast.error('Failed to update avatar');
     } finally {
       setAvatarSaving(false);
     }
@@ -124,7 +131,14 @@ export function ProfilePage() {
 
   const handleChangePassword = async (current: string, next: string) => {
     if (!token) throw new Error('Not authenticated');
-    await changePassword(token, { currentPassword: current, newPassword: next });
+    try {
+      await changePassword(token, { currentPassword: current, newPassword: next });
+      toast.success('Password changed successfully');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to change password';
+      toast.error('Password change failed', msg);
+      throw err;
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────

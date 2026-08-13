@@ -1,9 +1,10 @@
 import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
   X, CheckSquare, Clock, AlertCircle, CircleCheck, Circle, Ban, Inbox,
-  User as UserIcon, Calendar as CalendarIcon, Tag, Link2, MessageSquare, Send, Plus, Trash2, CheckCircle2
+  User as UserIcon, Calendar as CalendarIcon, Tag, Link2, MessageSquare, Send, Plus, Trash2, CheckCircle2, Loader2
 } from 'lucide-react';
 
 interface TaskDetailDrawerProps {
@@ -85,8 +86,11 @@ const PRIORITY_OPTIONS = [
 
 export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailDrawerProps) {
   const { workspace, token } = useAuthStore();
+  const { toast } = useToast();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isSubmittingSubtask, setIsSubmittingSubtask] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [newComment, setNewComment] = useState('');
@@ -185,40 +189,58 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
     if (res.ok) {
       fetchTaskDetails();
       onTaskUpdated();
+    } else {
+      toast.error('Failed to update task');
     }
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !taskId) return;
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ body: newComment }),
-    });
-    if (res.ok) {
-      setNewComment('');
-      fetchTaskDetails();
-      onTaskUpdated();
+    setIsSubmittingComment(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks/${taskId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ body: newComment }),
+      });
+      if (res.ok) {
+        toast.success('Comment added');
+        setNewComment('');
+        fetchTaskDetails();
+        onTaskUpdated();
+      } else {
+        toast.error('Failed to add comment');
+      }
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
   const handleAddSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubtaskTitle.trim() || !taskId) return;
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        title: newSubtaskTitle,
-        parentId: taskId,
-        projectId: task?.projectId,
-      }),
-    });
-    if (res.ok) {
-      setNewSubtaskTitle('');
-      fetchTaskDetails();
-      onTaskUpdated();
+    setIsSubmittingSubtask(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: newSubtaskTitle,
+          parentId: taskId,
+          projectId: task?.projectId,
+        }),
+      });
+      if (res.ok) {
+        toast.success('Subtask added');
+        setNewSubtaskTitle('');
+        fetchTaskDetails();
+        onTaskUpdated();
+      } else {
+        toast.error('Failed to add subtask');
+      }
+    } finally {
+      setIsSubmittingSubtask(false);
     }
   };
 
@@ -446,9 +468,9 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
                   placeholder="Add a new subtask..."
                   className="flex-1 bg-[#0c0c0e] border border-[#1f1f23] rounded px-3 py-1.5 text-xs focus:outline-none focus:border-[#7c3aed] text-[#fafafa]"
                 />
-                <button type="submit" className="bg-[#1f1f23] hover:bg-[#27272a] text-[#fafafa] px-3 py-1.5 rounded text-xs font-medium flex items-center space-x-1">
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add</span>
+                <button type="submit" disabled={isSubmittingSubtask} className="bg-[#1f1f23] hover:bg-[#27272a] disabled:opacity-50 text-[#fafafa] px-3 py-1.5 rounded text-xs font-medium flex items-center space-x-1 transition-colors">
+                  {isSubmittingSubtask ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>{isSubmittingSubtask ? 'Adding...' : 'Add'}</span>
                 </button>
               </form>
             </div>
@@ -568,10 +590,10 @@ export function TaskDetailDrawer({ taskId, onClose, onTaskUpdated }: TaskDetailD
                 />
                 <button
                   type="submit"
-                  disabled={!newComment.trim()}
-                  className="bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-50 text-white px-3 py-2 rounded-md text-xs font-medium flex items-center space-x-1"
+                  disabled={!newComment.trim() || isSubmittingComment}
+                  className="bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-50 text-white px-3 py-2 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  {isSubmittingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
               </form>
             </div>

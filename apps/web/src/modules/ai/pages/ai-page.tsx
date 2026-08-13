@@ -685,8 +685,8 @@ export default function AiPage() {
         {/* Sidebar Header */}
         <div className="px-4 h-14 border-b border-[#1f1f23]/60 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#7c3aed] via-[#a855f7] to-[#c084fc] flex items-center justify-center shadow-lg shadow-[#7c3aed]/25">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded-full ring-2 ring-[#7c3aed]/60 ring-offset-1 ring-offset-[#0c0c0e] shadow-md shadow-[#7c3aed]/30 overflow-hidden flex-shrink-0">
+              <img src="/Rember.png" alt="Emberlyn" className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold text-sm tracking-tight text-[#fafafa]">Emberlyn AI</span>
           </div>
@@ -945,8 +945,8 @@ export default function AiPage() {
                   return (
                     <div key={msg.id} className="flex space-x-4 w-full my-4 group items-start">
                       {/* Emberlyn Avatar */}
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7c3aed] via-[#a855f7] to-[#c084fc] flex items-center justify-center text-white flex-shrink-0 mt-0.5 shadow-md shadow-[#7c3aed]/20">
-                        <Sparkles className="w-4 h-4" />
+                      <div className="w-9 h-9 rounded-full flex-shrink-0 mt-0.5 ring-2 ring-[#7c3aed]/60 ring-offset-2 ring-offset-[#09090b] shadow-md shadow-[#7c3aed]/30 overflow-hidden">
+                        <img src="/Rember.png" alt="Emberlyn" className="w-full h-full object-cover" />
                       </div>
 
                       {/* Emberlyn Response Content */}
@@ -1000,21 +1000,56 @@ export default function AiPage() {
                   );
                 })}
 
-                {/* Animated Thinking Shimmer */}
+                {/* ── Emberlyn Reasoning Card ── */}
                 {isLoading && (
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7c3aed] to-[#c084fc] flex items-center justify-center text-white flex-shrink-0 shadow-md">
-                      <Sparkles className="w-4 h-4 animate-spin" />
+                  <div className="flex items-start space-x-3.5 my-2">
+                    {/* Avatar with slow pulse ring */}
+                    <div className="relative flex-shrink-0 mt-0.5">
+                      <div className="w-9 h-9 rounded-full ring-2 ring-[#7c3aed]/70 ring-offset-2 ring-offset-[#09090b] shadow-lg shadow-[#7c3aed]/30 overflow-hidden">
+                        <img src="/Rember.png" alt="Emberlyn" className="w-full h-full object-cover" />
+                      </div>
+                      {/* Orbiting glow dot */}
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#7c3aed] border-2 border-[#09090b] animate-pulse" />
                     </div>
-                    <div className="bg-[#121215] border border-[#27272a] px-5 py-4 rounded-2xl rounded-tl-none text-xs text-[#a1a1aa] flex items-center space-x-2">
-                      <span className="font-medium text-[#c084fc]">
-                        Emberlyn is reasoning with {selectedModel ? selectedModel.split('/').pop() : 'model'}...
-                      </span>
-                      <span className="flex space-x-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc] animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc] animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc] animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </span>
+
+                    {/* Reasoning card */}
+                    <div className="flex-1 min-w-0 bg-[#0e0e11] border border-[#2a2a35] rounded-2xl rounded-tl-none overflow-hidden shadow-xl shadow-[#7c3aed]/5">
+
+                      {/* Top bar — model badge + status */}
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1c1c24] bg-[#0c0c10]">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[11px] font-semibold text-[#fafafa] tracking-tight">Emberlyn</span>
+                          {selectedModel && (
+                            <span className="text-[10px] font-mono text-[#52525b] bg-[#121215] border border-[#27272a] px-2 py-0.5 rounded-full">
+                              {selectedModel.split('/').pop()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] animate-pulse" />
+                          <span className="text-[10px] text-[#71717a] font-medium">Reasoning</span>
+                        </div>
+                      </div>
+
+                      {/* Shimmer lines — fake "thinking" text skeleton */}
+                      <div className="px-4 py-4 space-y-2.5">
+                        {/* Line 1 — long */}
+                        <div className="h-2.5 rounded-full bg-gradient-to-r from-[#1f1f28] via-[#2e2e3d] to-[#1f1f28] bg-[length:300%_100%] animate-[shimmer_2s_ease-in-out_infinite]" style={{ width: '82%' }} />
+                        {/* Line 2 — medium */}
+                        <div className="h-2.5 rounded-full bg-gradient-to-r from-[#1f1f28] via-[#2e2e3d] to-[#1f1f28] bg-[length:300%_100%] animate-[shimmer_2s_ease-in-out_infinite]" style={{ width: '65%', animationDelay: '0.15s' }} />
+                        {/* Line 3 — short */}
+                        <div className="h-2.5 rounded-full bg-gradient-to-r from-[#1f1f28] via-[#2e2e3d] to-[#1f1f28] bg-[length:300%_100%] animate-[shimmer_2s_ease-in-out_infinite]" style={{ width: '48%', animationDelay: '0.3s' }} />
+                      </div>
+
+                      {/* Bottom bar — pulsing dots + label */}
+                      <div className="flex items-center space-x-3 px-4 py-2.5 border-t border-[#1c1c24] bg-[#0c0c10]">
+                        <span className="flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc] animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] animate-bounce" style={{ animationDelay: '140ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#818cf8] animate-bounce" style={{ animationDelay: '280ms' }} />
+                        </span>
+                        <span className="text-[11px] text-[#52525b]">Processing your request, please wait…</span>
+                      </div>
                     </div>
                   </div>
                 )}

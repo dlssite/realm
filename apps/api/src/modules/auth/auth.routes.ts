@@ -202,11 +202,23 @@ export async function authRoutes(fastify: FastifyInstance) {
     '/me',
     { preHandler: [fastify.authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Find workspace info
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId: request.user!.id },
-        include: { workspace: true },
-      });
+      const { workspaceId } = request.query as { workspaceId?: string };
+
+      // If the client passes a specific workspaceId (last active workspace),
+      // try to restore that one — but only if the user is actually a member.
+      // Fall back to the first membership if the ID is missing or invalid.
+      const membership = workspaceId
+        ? await prisma.workspaceMember.findFirst({
+            where: { userId: request.user!.id, workspaceId },
+            include: { workspace: true },
+          }) ?? await prisma.workspaceMember.findFirst({
+            where: { userId: request.user!.id },
+            include: { workspace: true },
+          })
+        : await prisma.workspaceMember.findFirst({
+            where: { userId: request.user!.id },
+            include: { workspace: true },
+          });
 
       return reply.send({
         user: request.user,

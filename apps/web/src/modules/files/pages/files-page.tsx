@@ -11,6 +11,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { FolderOpen, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import { listFiles, deleteFile } from '../api/files-api';
 import { FileUploadZone } from '../components/file-upload-zone';
 import { FileList } from '../components/file-list';
@@ -18,6 +19,7 @@ import type { FileRecord } from '../types';
 
 export function FilesPage() {
   const { token, workspace, user } = useAuthStore();
+  const { toast } = useToast();
 
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,7 @@ export function FilesPage() {
   // ── Handle new upload completing ───────────────────────────────────────────
   const handleUploaded = useCallback((file: FileRecord) => {
     setFiles((prev) => [file, ...prev]);
+    toast.success('File uploaded', file.filename);
   }, []);
 
   // ── Handle delete ──────────────────────────────────────────────────────────
@@ -57,8 +60,9 @@ export function FilesPage() {
     try {
       await deleteFile(token, workspace.id, fileId);
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      toast.info('File deleted');
     } catch {
-      // Keep the file in the list — server denied or errored
+      toast.error('Failed to delete file', 'You may not have permission to delete this file.');
     } finally {
       setDeleting(null);
     }

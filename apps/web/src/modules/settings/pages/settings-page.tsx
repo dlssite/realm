@@ -1,9 +1,10 @@
 import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
   Users, Shield, Users2, Building2, Plus, Mail, Bot,
-  Copy, Check, Trash2, ChevronDown, Clock, X, AlertTriangle,
+  Copy, Check, Trash2, ChevronDown, Clock, X, AlertTriangle, Loader2
 } from 'lucide-react';
 import AiSettingsTab from '../components/AiSettingsTab';
 
@@ -84,6 +85,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function SettingsPage() {
   const { workspace, user, token } = useAuthStore();
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'general' | 'members' | 'teams' | 'ai'>('general');
 
@@ -94,6 +96,7 @@ export default function SettingsPage() {
   // Teams state
   const [teams, setTeams]               = useState<Team[]>([]);
   const [teamName, setTeamName]         = useState('');
+  const [isCreatingSettingsTeam, setIsCreatingSettingsTeam] = useState(false);
   const [teamDescription, setTeamDescription] = useState('');
 
   // Invite form
@@ -169,10 +172,11 @@ export default function SettingsPage() {
       const link = `${window.location.origin}/invite?token=${data.token}`;
       setInviteLink(link);
       setInviteEmail('');
-      // Optimistically add to pending list
+      toast.success('Invitation sent', `Link ready to share with ${inviteEmail}`);
       setInvitations((prev) => [data, ...prev]);
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to send invitation', err.message);
     } finally {
       setInviteLoading(false);
     }
@@ -193,8 +197,10 @@ export default function SettingsPage() {
         throw new Error(data.error?.message || 'Failed to revoke invitation');
       }
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      toast.info('Invitation revoked');
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to revoke invitation', err.message);
     } finally {
       setRevokingInviteId(null);
     }
@@ -219,8 +225,10 @@ export default function SettingsPage() {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
       );
+      toast.success('Role updated');
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to update role', err.message);
     } finally {
       setUpdatingRoleFor(null);
     }
@@ -242,8 +250,10 @@ export default function SettingsPage() {
         throw new Error(data.error?.message || 'Failed to remove member');
       }
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      toast.info('Member removed from workspace');
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to remove member', err.message);
     } finally {
       setRemovingMemberId(null);
     }
@@ -254,6 +264,7 @@ export default function SettingsPage() {
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsCreatingSettingsTeam(true);
     try {
       const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         method: 'POST',
@@ -263,10 +274,14 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Failed to create team');
       setTeams((prev) => [...prev, { ...data, members: [] }]);
+      toast.success('Team created', teamName);
       setTeamName('');
       setTeamDescription('');
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to create team', err.message);
+    } finally {
+      setIsCreatingSettingsTeam(false);
     }
   };
 
@@ -589,11 +604,16 @@ export default function SettingsPage() {
                 </div>
                 <button
                   type="submit"
-                  className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-2.5 sm:px-4 py-2 rounded text-sm font-medium transition-colors flex items-center space-x-1.5 flex-shrink-0"
+                  disabled={isCreatingSettingsTeam}
+                  className="bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-50 text-white px-2.5 sm:px-4 py-2 rounded text-sm font-medium transition-colors flex items-center space-x-1.5 flex-shrink-0"
                   title="Create Team"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Create Team</span>
+                  {isCreatingSettingsTeam
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Plus className="w-4 h-4" />}
+                  <span className="hidden sm:inline">
+                    {isCreatingSettingsTeam ? 'Creating...' : 'Create Team'}
+                  </span>
                 </button>
               </form>
             </div>

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import { useChatStore } from '../../../app/stores/use-chat.store';
-import { Plus, FolderKanban, MoreHorizontal, Calendar, CheckSquare, Users2, Hash } from 'lucide-react';
+import { useToast } from '../../../shared/hooks/use-toast';
+import { Plus, FolderKanban, MoreHorizontal, Calendar, CheckSquare, Users2, Hash, Loader2 } from 'lucide-react';
 
 
 interface Team {
@@ -52,6 +53,7 @@ function TeamBadge({ team }: { team: Team | null }) {
 export default function ProjectsPage() {
   const { workspace, token } = useAuthStore();
   const { enableProjectChannel } = useChatStore();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -61,6 +63,7 @@ export default function ProjectsPage() {
   const [newDesc, setNewDesc] = useState('');
   const [newTeamId, setNewTeamId] = useState('');
   const [newEnableChannel, setNewEnableChannel] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!workspace || !token) return;
@@ -94,28 +97,35 @@ export default function ProjectsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        name: newName,
-        description: newDesc || undefined,
-        teamId: newTeamId || undefined,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      // Optionally enable project channel
-      if (newEnableChannel && data.id) {
-        const channel = await enableProjectChannel(data.id);
-        if (channel) navigate('/chat');
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: newName,
+          description: newDesc || undefined,
+          teamId: newTeamId || undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success('Project created', newName);
+        if (newEnableChannel && data.id) {
+          const channel = await enableProjectChannel(data.id);
+          if (channel) navigate('/chat');
+        }
+        setNewName('');
+        setNewDesc('');
+        setNewTeamId('');
+        setNewEnableChannel(false);
+        setShowCreate(false);
+        fetchProjects();
+      } else {
+        toast.error('Failed to create project');
       }
-      setNewName('');
-      setNewDesc('');
-      setNewTeamId('');
-      setNewEnableChannel(false);
-      setShowCreate(false);
-      fetchProjects();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -207,8 +217,9 @@ export default function ProjectsPage() {
           </div>
 
           <div className="flex space-x-2">
-            <button type="submit" className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-4 py-1.5 rounded text-sm font-medium">
-              Create
+            <button type="submit" disabled={isSubmitting} className="flex items-center gap-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">
+              {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {isSubmitting ? 'Creating...' : 'Create'}
             </button>
             <button
               type="button"

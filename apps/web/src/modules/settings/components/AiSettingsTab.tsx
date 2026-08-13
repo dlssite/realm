@@ -1,6 +1,7 @@
 import { API_BASE } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
   Bot, Key, Server, Cpu, Save, Check, AlertCircle, ShieldAlert,
   RefreshCw, ChevronDown, Zap, Lock, X, Plus, Wrench,
@@ -29,6 +30,7 @@ function isToolCapable(m: OpenRouterModel) {
 
 export function AiSettingsTab() {
   const { workspace, token } = useAuthStore();
+  const { toast } = useToast();
 
   const [provider, setProvider] = useState<'OPENROUTER' | 'OLLAMA' | 'OPENAI' | 'ANTHROPIC'>('OPENROUTER');
   const [apiKey, setApiKey] = useState('');
@@ -132,9 +134,11 @@ export function AiSettingsTab() {
       setApiKey(data.apiKey || '');
       setAllowedModels(data.allowedModels || []);
       setSaveSuccess(true);
+      toast.success('AI settings saved');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       setErrorMessage(err.message);
+      toast.error('Failed to save AI settings', err.message);
     } finally {
       setIsSaving(false);
     }

@@ -2,9 +2,10 @@ import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
   FolderKanban, ArrowLeft, Plus, CheckSquare, Flag, Target,
-  Calendar as CalendarIcon, Users, Clock, CircleCheck, AlertCircle, Circle, Inbox, Ban, Users2
+  Calendar as CalendarIcon, Users, Clock, CircleCheck, AlertCircle, Circle, Inbox, Ban, Users2, Loader2
 } from 'lucide-react';
 import { TaskDetailDrawer } from '../../tasks/components/task-detail-drawer';
 import { TimelineView } from '../../tasks/components/timeline-view';
@@ -61,6 +62,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { workspace, token } = useAuthStore();
+  const { toast } = useToast();
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +76,8 @@ export default function ProjectDetailPage() {
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState(100);
+  const [isMilestoneSaving, setIsMilestoneSaving] = useState(false);
+  const [isGoalSaving, setIsGoalSaving] = useState(false);
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -102,22 +106,35 @@ export default function ProjectDetailPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) fetchProjectDetails();
+    if (res.ok) {
+      toast.success('Status updated', newStatus.toLowerCase());
+      fetchProjectDetails();
+    } else {
+      toast.error('Failed to update status');
+    }
   };
 
   const handleCreateMilestone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!milestoneName.trim()) return;
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: milestoneName, dueDate: milestoneDate ? new Date(milestoneDate).toISOString() : undefined }),
-    });
-    if (res.ok) {
-      setMilestoneName('');
-      setMilestoneDate('');
-      setShowAddMilestone(false);
-      fetchProjectDetails();
+    setIsMilestoneSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/milestones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: milestoneName, dueDate: milestoneDate ? new Date(milestoneDate).toISOString() : undefined }),
+      });
+      if (res.ok) {
+        toast.success('Milestone created');
+        setMilestoneName('');
+        setMilestoneDate('');
+        setShowAddMilestone(false);
+        fetchProjectDetails();
+      } else {
+        toast.error('Failed to create milestone');
+      }
+    } finally {
+      setIsMilestoneSaving(false);
     }
   };
 
@@ -133,15 +150,23 @@ export default function ProjectDetailPage() {
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goalName.trim()) return;
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/goals`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: goalName, targetValue: Number(goalTarget), currentValue: 0 }),
-    });
-    if (res.ok) {
-      setGoalName('');
-      setShowAddGoal(false);
-      fetchProjectDetails();
+    setIsGoalSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/projects/${projectId}/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: goalName, targetValue: Number(goalTarget), currentValue: 0 }),
+      });
+      if (res.ok) {
+        toast.success('Goal created');
+        setGoalName('');
+        setShowAddGoal(false);
+        fetchProjectDetails();
+      } else {
+        toast.error('Failed to create goal');
+      }
+    } finally {
+      setIsGoalSaving(false);
     }
   };
 
@@ -263,7 +288,10 @@ export default function ProjectDetailPage() {
                 <input type="date" value={milestoneDate} onChange={(e) => setMilestoneDate(e.target.value)}
                   className="w-full bg-[#09090b] border border-[#1f1f23] rounded px-3 py-1.5 text-xs text-[#fafafa] focus:outline-none" />
                 <div className="flex space-x-2 pt-1">
-                  <button type="submit" className="bg-[#7c3aed] text-white px-3 py-1 rounded text-xs">Save</button>
+                  <button type="submit" disabled={isMilestoneSaving} className="flex items-center gap-1.5 bg-[#7c3aed] disabled:opacity-50 text-white px-3 py-1 rounded text-xs transition-colors">
+                    {isMilestoneSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isMilestoneSaving ? 'Saving...' : 'Save'}
+                  </button>
                   <button type="button" onClick={() => setShowAddMilestone(false)} className="text-[#a1a1aa] text-xs">Cancel</button>
                 </div>
               </form>
@@ -305,7 +333,10 @@ export default function ProjectDetailPage() {
                 <input type="number" placeholder="Target Value..." value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))}
                   className="w-full bg-[#09090b] border border-[#1f1f23] rounded px-3 py-1.5 text-xs text-[#fafafa] focus:outline-none" />
                 <div className="flex space-x-2 pt-1">
-                  <button type="submit" className="bg-[#7c3aed] text-white px-3 py-1 rounded text-xs">Save</button>
+                  <button type="submit" disabled={isGoalSaving} className="flex items-center gap-1.5 bg-[#7c3aed] disabled:opacity-50 text-white px-3 py-1 rounded text-xs transition-colors">
+                    {isGoalSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isGoalSaving ? 'Saving...' : 'Save'}
+                  </button>
                   <button type="button" onClick={() => setShowAddGoal(false)} className="text-[#a1a1aa] text-xs">Cancel</button>
                 </div>
               </form>

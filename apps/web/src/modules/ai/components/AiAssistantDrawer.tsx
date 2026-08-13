@@ -148,8 +148,8 @@ export function AiAssistantDrawer({ isOpen, onClose }: Props) {
                   className={`flex space-x-3 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="w-7 h-7 rounded-lg bg-[#7c3aed]/15 border border-[#7c3aed]/30 flex items-center justify-center text-[#7c3aed] flex-shrink-0">
-                      <Bot className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-full ring-2 ring-[#7c3aed]/60 ring-offset-2 ring-offset-[#0c0c0e] shadow-md shadow-[#7c3aed]/30 overflow-hidden flex-shrink-0">
+                      <img src="/Rember.png" alt="Emberlyn" className="w-full h-full object-cover" />
                     </div>
                   )}
 
@@ -227,8 +227,8 @@ export function AiAssistantDrawer({ isOpen, onClose }: Props) {
 
           {isLoading && (
             <div className="flex space-x-3 items-center">
-              <div className="w-7 h-7 rounded-lg bg-[#7c3aed]/15 flex items-center justify-center text-[#7c3aed]">
-                <Bot className="w-4 h-4 animate-spin" />
+              <div className="w-8 h-8 rounded-full ring-2 ring-[#7c3aed]/60 ring-offset-2 ring-offset-[#0c0c0e] shadow-md shadow-[#7c3aed]/30 overflow-hidden flex-shrink-0 animate-pulse">
+                <img src="/Rember.png" alt="Emberlyn" className="w-full h-full object-cover" />
               </div>
               <div className="bg-[#121215] border border-[#1f1f23] p-3 rounded-xl text-xs text-[#a1a1aa] flex items-center space-x-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#7c3aed]" />

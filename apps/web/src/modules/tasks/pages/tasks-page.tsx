@@ -1,9 +1,10 @@
 import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
   Plus, CheckSquare, List, Columns, Filter, Calendar as CalendarIcon,
-  Clock, AlertCircle, CircleCheck, Circle, Ban, Inbox, Search, ChevronRight, ChevronDown, Tag, Link2
+  Clock, AlertCircle, CircleCheck, Circle, Ban, Inbox, Search, ChevronRight, ChevronDown, Tag, Link2, Loader2
 } from 'lucide-react';
 import { TaskDetailDrawer } from '../components/task-detail-drawer';
 import { TimelineView } from '../components/timeline-view';
@@ -56,6 +57,7 @@ type ViewMode = 'list' | 'kanban' | 'timeline';
 
 export default function TasksPage() {
   const { workspace, token } = useAuthStore();
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
@@ -65,6 +67,7 @@ export default function TasksPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,18 +142,23 @@ export default function TasksPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        title: newTitle,
-        projectId: selectedProjectId || undefined,
-      }),
-    });
-    if (res.ok) {
-      setNewTitle('');
-      setShowCreate(false);
-      fetchTasks();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: newTitle, projectId: selectedProjectId || undefined }),
+      });
+      if (res.ok) {
+        toast.success('Task created');
+        setNewTitle('');
+        setShowCreate(false);
+        fetchTasks();
+      } else {
+        toast.error('Failed to create task');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -348,8 +356,9 @@ export default function TasksPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            <button type="submit" className="bg-[#7c3aed] text-white px-3 py-1 rounded text-xs font-medium">
-              Save
+            <button type="submit" disabled={isSubmitting} className="flex items-center gap-1.5 bg-[#7c3aed] disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+              {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
+              {isSubmitting ? 'Saving...' : 'Save'}
             </button>
             <button type="button" onClick={() => setShowCreate(false)} className="text-[#71717a] hover:text-[#fafafa] text-xs">
               Cancel

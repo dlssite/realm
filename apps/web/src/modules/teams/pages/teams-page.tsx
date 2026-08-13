@@ -2,8 +2,9 @@ import { API_BASE } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../app/stores/auth.store';
 import { useChatStore } from '../../../app/stores/use-chat.store';
+import { useToast } from '../../../shared/hooks/use-toast';
 import {
-  Users2, Plus, Shield, Crown, UserPlus, Trash2, X, FolderKanban, Check, ChevronRight, Building2, MessageSquare, Hash
+  Users2, Plus, Shield, Crown, UserPlus, Trash2, X, FolderKanban, Check, ChevronRight, Building2, MessageSquare, Hash, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,6 +40,7 @@ interface WorkspaceMember {
 export default function TeamsPage() {
   const { workspace, token } = useAuthStore();
   const { enableTeamChannel } = useChatStore();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [teams, setTeams] = useState<Team[]>([]);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
@@ -52,6 +54,8 @@ export default function TeamsPage() {
   const [newTeamLeaderId, setNewTeamLeaderId] = useState('');
   const [newTeamEnableChannel, setNewTeamEnableChannel] = useState(false);
   const [enablingChannel, setEnablingChannel] = useState<string | null>(null);
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
 
   // Team detail drawer state
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -98,6 +102,7 @@ export default function TeamsPage() {
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsCreatingTeam(true);
     try {
       const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams`, {
         method: 'POST',
@@ -112,11 +117,11 @@ export default function TeamsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Failed to create team');
 
-      // Optionally enable team channel
       if (newTeamEnableChannel && data.id) {
         await enableTeamChannel(data.id);
       }
 
+      toast.success('Team created', newTeamName);
       setNewTeamName('');
       setNewTeamDesc('');
       setNewTeamLeaderId('');
@@ -125,6 +130,9 @@ export default function TeamsPage() {
       fetchTeams();
     } catch (err: any) {
       setError(err.message);
+      toast.error('Failed to create team', err.message);
+    } finally {
+      setIsCreatingTeam(false);
     }
   };
 
@@ -154,6 +162,7 @@ export default function TeamsPage() {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeam || !addMemberUserId) return;
+    setIsAddingMember(true);
     try {
       const res = await fetch(`${API_BASE}/api/v1/workspaces/${workspace!.id}/teams/${selectedTeam.id}/members`, {
         method: 'POST',
@@ -161,11 +170,16 @@ export default function TeamsPage() {
         body: JSON.stringify({ userId: addMemberUserId }),
       });
       if (res.ok) {
+        toast.success('Member added');
         setAddMemberUserId('');
         fetchTeams();
+      } else {
+        toast.error('Failed to add member');
       }
     } catch (err: any) {
-      console.error('Failed to add team member:', err);
+      toast.error('Failed to add member', err.message);
+    } finally {
+      setIsAddingMember(false);
     }
   };
 
@@ -175,9 +189,14 @@ export default function TeamsPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) fetchTeams();
+      if (res.ok) {
+        toast.info('Member removed');
+        fetchTeams();
+      } else {
+        toast.error('Failed to remove member');
+      }
     } catch (err: any) {
-      console.error('Failed to remove member:', err);
+      toast.error('Failed to remove member', err.message);
     }
   };
 
@@ -189,11 +208,14 @@ export default function TeamsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
+        toast.info('Team deleted');
         setSelectedTeam(null);
         fetchTeams();
+      } else {
+        toast.error('Failed to delete team');
       }
     } catch (err: any) {
-      console.error('Failed to delete team:', err);
+      toast.error('Failed to delete team', err.message);
     }
   };
 
@@ -388,9 +410,11 @@ export default function TeamsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-4 py-2 rounded text-xs font-medium"
+                  className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-4 py-2 rounded text-xs font-medium flex items-center gap-1.5 transition-colors"
+                  disabled={isCreatingTeam}
                 >
-                  Create Team
+                  {isCreatingTeam && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isCreatingTeam ? 'Creating...' : 'Create Team'}
                 </button>
               </div>
             </form>
@@ -472,10 +496,11 @@ export default function TeamsPage() {
                   </select>
                   <button
                     type="submit"
-                    disabled={!addMemberUserId}
-                    className="bg-[#7c3aed] disabled:opacity-50 hover:bg-[#6d28d9] text-white px-3 py-2 rounded text-xs font-medium flex-shrink-0"
+                    disabled={!addMemberUserId || isAddingMember}
+                    className="bg-[#7c3aed] disabled:opacity-50 hover:bg-[#6d28d9] text-white px-3 py-2 rounded text-xs font-medium flex-shrink-0 flex items-center gap-1.5 transition-colors"
                   >
-                    Add
+                    {isAddingMember && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isAddingMember ? 'Adding...' : 'Add'}
                   </button>
                 </form>
               </div>
