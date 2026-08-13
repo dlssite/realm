@@ -19,6 +19,8 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
+# TypeScript incremental build info — must not be committed; poisons Docker builds
+*.tsbuildinfo
 
 # Prisma & Database
 prisma/dev.db

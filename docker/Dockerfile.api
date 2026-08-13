@@ -27,6 +27,10 @@ RUN pnpm install --frozen-lockfile
 
 # Copy full packages source and build them so dist/ exists before API build
 COPY packages ./packages
+# Remove any stale incremental build info that may have been copied from the
+# host — if present, tsc --build would skip emission thinking nothing changed,
+# resulting in empty dist/ folders in the final image.
+RUN find /app/packages -name "*.tsbuildinfo" -delete
 RUN pnpm --filter @realm/types build
 RUN pnpm --filter @realm/utils build
 RUN pnpm --filter @realm/config build
