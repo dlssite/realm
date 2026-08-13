@@ -1,0 +1,68 @@
+// ── Calendar Module Schema ────────────────────────────────────────────────────
+// Unified calendar: custom events + surface task due dates & project milestones.
+
+enum EventType {
+  EVENT      // manually created calendar event
+  TASK       // surfaced from tasks.dueDate (read-only, no direct edit here)
+  MILESTONE  // surfaced from milestones.dueDate (read-only)
+
+  @@map("event_type")
+}
+
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  MAYBE
+
+  @@map("rsvp_status")
+}
+
+model CalendarEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  workspaceId  String    @map("workspace_id") @db.Uuid
+  createdById  String    @map("created_by_id") @db.Uuid
+
+  // Optional scoping
+  projectId    String?   @map("project_id") @db.Uuid
+  teamId       String?   @map("team_id") @db.Uuid
+
+  title        String    @db.VarChar(255)
+  description  String?   @db.Text
+  type         EventType @default(EVENT)
+  startsAt     DateTime  @map("starts_at")
+  endsAt       DateTime  @map("ends_at")
+  isAllDay     Boolean   @default(false) @map("is_all_day")
+  color        String    @default("#7c3aed") @db.VarChar(20) // hex accent
+
+  // Relations
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation("CreatedEvents", fields: [createdById], references: [id])
+  project    Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  team       Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  attendees  EventAttendee[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, startsAt, endsAt])
+  @@index([deletedAt])
+  @@map("calendar_events")
+}
+
+model EventAttendee {
+  id      String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId String     @map("event_id") @db.Uuid
+  userId  String     @map("user_id") @db.Uuid
+  rsvp    RsvpStatus @default(PENDING)
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User          @relation("EventAttendees", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_attendees")
+}

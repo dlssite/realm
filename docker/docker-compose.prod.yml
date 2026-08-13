@@ -1,0 +1,139 @@
+# ── Realm Production Stack ────────────────────────────────────────────────────
+#
+# Prerequisites:
+#   1. Copy .env.example → .env and fill in all values.
+#   2. Set REALM_DOMAIN to your public domain (e.g. realm.yourdomain.com).
+#   3. Ensure DNS A record for REALM_DOMAIN points to this server's IP.
+#
+# Deploy:
+#   docker compose -f docker/docker-compose.prod.yml --env-file .env up -d
+#
+# To migrate the database:
+#   docker compose -f docker/docker-compose.prod.yml exec api npx prisma migrate deploy
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: realm-prod
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: realm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: realm
+      POSTGRES_USER: ${POSTGRES_USER:-realm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-realm} -d realm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - realm-internal
+
+  # ── MinIO object storage ────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: realm-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - realm-internal
+
+  # ── API (Fastify) ───────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: realm-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      API_HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-realm}:${POSTGRES_PASSWORD}@postgres:5432/realm
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-realm-files}
+      VITE_APP_URL: https://${REALM_DOMAIN:?REALM_DOMAIN is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - realm-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Web (nginx serving Vite SPA) ────────────────────────────────────────────
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+      args:
+        VITE_API_URL: https://${REALM_DOMAIN}
+        VITE_APP_URL: https://${REALM_DOMAIN}
+    container_name: realm-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - realm-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Caddy reverse proxy + TLS ───────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: realm-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      REALM_DOMAIN: ${REALM_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    networks:
+      - realm-internal
+
+networks:
+  realm-internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

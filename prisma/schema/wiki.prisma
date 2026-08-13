@@ -1,0 +1,82 @@
+// Wiki module schema: pages, versions, templates
+
+enum WikiVisibility {
+  WORKSPACE
+  TEAM
+  PROJECT
+  ROLE
+
+  @@map("wiki_visibility")
+}
+
+model WikiPage {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
+  workspaceId     String             @map("workspace_id") @db.Uuid
+  createdById     String             @map("created_by_id") @db.Uuid
+  parentId        String?            @map("parent_id") @db.Uuid
+  teamId          String?            @map("team_id") @db.Uuid
+  projectId       String?            @map("project_id") @db.Uuid
+
+  title           String             @db.VarChar(255)
+  slug            String             @db.VarChar(255)
+  isPublished     Boolean            @default(false) @map("is_published")
+  latestVersionId String?            @map("latest_version_id") @db.Uuid
+  visibility      WikiVisibility     @default(WORKSPACE)
+
+  // Relations
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id])
+  createdBy       User               @relation(fields: [createdById], references: [id])
+  parent          WikiPage?          @relation("PageChildren", fields: [parentId], references: [id])
+  children        WikiPage[]         @relation("PageChildren")
+  team            Team?              @relation(fields: [teamId], references: [id])
+  project         Project?           @relation(fields: [projectId], references: [id])
+  versions        WikiPageVersion[]
+
+  visibilityRole  WorkspaceRole?     @map("visibility_role")
+
+  @@index([workspaceId])
+  @@index([parentId])
+  @@index([teamId])
+  @@index([projectId])
+  @@map("wiki_pages")
+}
+
+model WikiPageVersion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdById   String   @map("created_by_id") @db.Uuid
+  pageId        String   @map("page_id") @db.Uuid
+
+  title         String   @db.VarChar(255)
+  content       Json?
+  versionNumber Int      @map("version_number")
+  changeSummary String?  @db.Text @map("change_summary")
+
+  // Relations
+  page      WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@index([pageId])
+  @@map("wiki_page_versions")
+}
+
+model WikiTemplate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdById String   @map("created_by_id") @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  content     Json?
+
+  // Relations
+  workspace  Workspace @relation(fields: [workspaceId], references: [id])
+  createdBy  User      @relation(fields: [createdById], references: [id])
+
+  @@index([workspaceId])
+  @@map("wiki_templates")
+}

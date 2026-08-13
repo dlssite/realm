@@ -1,0 +1,61 @@
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  email         String    @unique @db.VarChar(255)
+  name          String    @db.VarChar(255)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  avatarUrl     String?   @map("avatar_url") @db.VarChar(512)
+
+  // Relations
+  sessions          Session[]
+  workspaceMembers  WorkspaceMember[]
+  createdWorkspaces Workspace[]       @relation("CreatedWorkspaces")
+  teamMembers       TeamMember[]
+  ledTeams          Team[]            @relation("TeamLeader")
+  createdProjects   Project[]
+  createdTasks      Task[]            @relation("TaskCreator")
+  assignedTasks     Task[]            @relation("TaskAssignee")
+  taskComments      TaskComment[]
+  // Wiki relations
+  createdWikiPages        WikiPage[]
+  createdWikiPageVersions WikiPageVersion[]
+  createdWikiTemplates    WikiTemplate[]
+  // AI relations
+  aiConversations         AiConversation[]
+  // Chat relations
+  createdChannels         Channel[]         @relation("ChannelCreator")
+  channelMemberships      ChannelMember[]
+  chatMessages            ChatMessage[]     @relation("ChatMessageSender")
+  messageReactions        MessageReaction[]
+  // Files relations
+  uploadedFiles           FileRecord[]      @relation("UploadedFiles")
+  fileVersionUploads      FileVersion[]     @relation("FileVersionUploads")
+  // Calendar relations
+  createdEvents           CalendarEvent[]   @relation("CreatedEvents")
+  eventAttendances        EventAttendee[]   @relation("EventAttendees")
+  // Activity / Audit Log relations
+  auditLogs               AuditLog[]        @relation("AuditLogActor")
+  // Notification relations
+  notifications           Notification[]    @relation("NotificationRecipient")
+
+  @@index([email])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique @db.VarChar(255)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}

@@ -1,0 +1,6 @@
+﻿-- Baseline migration
+-- This migration is intentionally empty.
+-- It was created to establish Prisma migration history for a database
+-- that was already built using raw SQL scripts (chat_tables.sql, wiki_tables.sql, etc.)
+-- All tables and enums already exist in the database.
+-- Future schema changes should be applied via: pnpm run prisma:push

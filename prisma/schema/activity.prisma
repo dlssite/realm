@@ -1,0 +1,63 @@
+// Activity / Audit Log schema
+// Immutable, append-only record of every significant write event in a workspace.
+// Written by the backend service layer after every create / update / delete.
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  COMMENTED
+  ASSIGNED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  MOVED
+  RESTORED
+  UPLOADED
+  MENTIONED
+
+  @@map("audit_action")
+}
+
+enum AuditEntityType {
+  TASK
+  PROJECT
+  MILESTONE
+  WIKI_PAGE
+  COMMENT
+  CHANNEL
+  FILE
+  WORKSPACE
+  TEAM
+  MEMBER
+
+  @@map("audit_entity_type")
+}
+
+model AuditLog {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  workspaceId String          @map("workspace_id") @db.Uuid
+  actorId     String          @map("actor_id") @db.Uuid
+
+  entityType  AuditEntityType @map("entity_type")
+  entityId    String          @map("entity_id") @db.Uuid
+  entityTitle String?         @map("entity_title") @db.VarChar(255)
+
+  action      AuditAction
+
+  // JSON blob carrying before/after values or any action-specific context.
+  // Examples: { "from": "TODO", "to": "DONE" } for STATUS_CHANGED
+  //           { "commentBody": "Looks great!" }  for COMMENTED
+  meta        Json?
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, entityType])
+  @@index([workspaceId, actorId])
+  @@index([entityId])
+  @@map("audit_logs")
+}

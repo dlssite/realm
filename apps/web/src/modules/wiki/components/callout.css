@@ -1,0 +1,24 @@
+/* Simple callout styles */
+.callout {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  border: 1px solid rgba(255,255,255,0.04);
+  display: block;
+}
+.callout--info {
+  background: linear-gradient(90deg, rgba(59,130,246,0.04), rgba(99,102,241,0.03));
+  border-color: rgba(59,130,246,0.12);
+}
+.callout--warn {
+  background: linear-gradient(90deg, rgba(234,179,8,0.04), rgba(245,158,11,0.03));
+  border-color: rgba(234,179,8,0.12);
+}
+.callout--note {
+  background: linear-gradient(90deg, rgba(16,185,129,0.04), rgba(34,197,94,0.03));
+  border-color: rgba(16,185,129,0.12);
+}
+.callout .callout-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}

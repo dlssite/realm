@@ -1,0 +1,72 @@
+# ── Realm Production Caddyfile ────────────────────────────────────────────────
+#
+# Usage:
+#   Set REALM_DOMAIN in your environment (e.g. realm.yourdomain.com).
+#   Caddy auto-provisions a Let's Encrypt TLS certificate for that domain.
+#
+# Proxying layout:
+#   HTTPS → Caddy
+#     /api/*  → API container  (http://api:4000)
+#     /*      → Web container  (http://web:3000)
+#
+# For local development without a real domain, replace the site address with
+# :443 and add `tls internal` to use Caddy's self-signed dev certificate.
+# ─────────────────────────────────────────────────────────────────────────────
+
+{$REALM_DOMAIN} {
+
+    # ── TLS — auto HTTPS via Let's Encrypt ───────────────────────────────────
+    # Caddy handles certificate acquisition and renewal automatically.
+    # No extra config needed when the domain has a valid public DNS record.
+
+    # ── Logging ──────────────────────────────────────────────────────────────
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+
+    # ── Security headers ─────────────────────────────────────────────────────
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options    "nosniff"
+        X-Frame-Options           "SAMEORIGIN"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # ── API routes ────────────────────────────────────────────────────────────
+    handle /api/* {
+        reverse_proxy api:4000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # ── WebSocket upgrade for Chat ────────────────────────────────────────────
+    handle /ws/* {
+        reverse_proxy api:4000 {
+            header_up Connection {http.request.header.Connection}
+            header_up Upgrade {http.request.header.Upgrade}
+        }
+    }
+
+    # ── MinIO presigned upload pass-through ───────────────────────────────────
+    # Presigned URLs point directly at MinIO; expose on /storage/* in production
+    # so the browser uploads to the same origin (avoids CORS).
+    handle /storage/* {
+        uri strip_prefix /storage
+        reverse_proxy minio:9000
+    }
+
+    # ── Frontend SPA ─────────────────────────────────────────────────────────
+    handle {
+        reverse_proxy web:3000
+    }
+}
+
+# ── HTTP → HTTPS redirect ─────────────────────────────────────────────────────
+http://{$REALM_DOMAIN} {
+    redir https://{$REALM_DOMAIN}{uri} permanent
+}

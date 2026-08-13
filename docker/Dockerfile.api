@@ -1,0 +1,87 @@
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+WORKDIR /app
+
+# Copy workspace manifests first (layer cache optimisation)
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+COPY turbo.json ./
+
+# Copy all package manifests before source so dep installs are cached
+COPY packages/types/package.json      ./packages/types/
+COPY packages/utils/package.json      ./packages/utils/
+COPY packages/config/package.json     ./packages/config/
+COPY packages/ui/package.json         ./packages/ui/
+COPY packages/sdk/package.json        ./packages/sdk/
+COPY apps/api/package.json            ./apps/api/
+
+# Install all dependencies (workspace-aware)
+RUN pnpm install --frozen-lockfile
+
+# Copy prisma fragments + merge script
+COPY prisma ./prisma
+COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
+
+# Step 1: Merge all prisma/schema/*.prisma → prisma/schema.prisma
+RUN node ./scripts/merge-prisma.js
+
+# Step 2: Generate Prisma client from the merged schema (matches pnpm run prisma:generate)
+RUN pnpm exec prisma generate --schema prisma/schema.prisma
+
+# Copy full source and build
+COPY packages ./packages
+COPY apps/api ./apps/api
+
+# Build TypeScript → dist/
+RUN pnpm --filter @realm/api exec tsc
+
+# ── Stage 2: Production image ─────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+WORKDIR /app
+
+# Copy workspace manifests for prod install
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+
+COPY packages/types/package.json      ./packages/types/
+COPY packages/utils/package.json      ./packages/utils/
+COPY packages/config/package.json     ./packages/config/
+COPY packages/ui/package.json         ./packages/ui/
+COPY packages/sdk/package.json        ./packages/sdk/
+COPY apps/api/package.json            ./apps/api/
+
+# Production deps only
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled output from builder
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+
+# Copy the generated Prisma client from builder
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0 \
+     ./node_modules/.pnpm/@prisma+client@5.17.0_prisma@5.17.0
+
+# Copy the MERGED schema.prisma (needed for migrate deploy at startup)
+# The fragment folder is not needed at runtime — only the merged file is.
+COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
+
+# Copy merge script so the entrypoint can re-merge if needed in future
+COPY scripts/merge-prisma.js ./scripts/merge-prisma.js
+
+# Non-root user for security
+RUN addgroup -S realm && adduser -S realm -G realm
+USER realm
+
+EXPOSE 4000
+
+# Run migrations against the MERGED schema.prisma, then start the server.
+# This mirrors the project's prisma:migrate script convention.
+CMD ["sh", "-c", "node /app/scripts/merge-prisma.js && npx prisma migrate deploy --schema=/app/prisma/schema.prisma && node apps/api/dist/main.js"]

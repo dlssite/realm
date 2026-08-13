@@ -1,0 +1,69 @@
+// AI module schema: Provider configurations, Conversations, and Messages
+
+enum AiProvider {
+  OPENROUTER
+  OLLAMA
+  OPENAI
+  ANTHROPIC
+
+  @@map("ai_provider")
+}
+
+model AiProviderConfig {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  workspaceId String     @unique @map("workspace_id") @db.Uuid
+
+  provider      AiProvider @default(OPENROUTER)
+  apiKey        String?    @db.Text @map("api_key")
+  baseUrl       String?    @db.VarChar(512) @map("base_url")
+  modelName     String     @default("anthropic/claude-3.5-sonnet") @db.VarChar(255) @map("model_name")
+  allowedModels Json       @default("[]") @map("allowed_models")
+  isActive      Boolean    @default(true) @map("is_active")
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("ai_provider_configs")
+}
+
+model AiConversation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  workspaceId String   @map("workspace_id") @db.Uuid
+  createdById String   @map("created_by_id") @db.Uuid
+
+  title           String   @default("New Conversation") @db.VarChar(255)
+  activeModelName String?  @db.VarChar(255) @map("active_model_name")
+
+  // Relations
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User        @relation(fields: [createdById], references: [id])
+  messages  AiMessage[]
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at")
+  conversationId String         @map("conversation_id") @db.Uuid
+
+  role           String         @db.VarChar(50) // "system" | "user" | "assistant" | "tool"
+  content        String         @db.Text
+  tokens         Int?
+
+  // Persists tool call metadata for the agentic loop (audit + replay).
+  // Stored as JSON array of { toolCallId, name, arguments, result } objects.
+  toolCalls      Json?          @map("tool_calls")
+
+  // Relations
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}

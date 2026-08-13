@@ -1,0 +1,112 @@
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  CANCELLED
+
+  @@map("task_status")
+}
+
+enum TaskPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+  NONE
+
+  @@map("task_priority")
+}
+
+model Task {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+  workspaceId String       @map("workspace_id") @db.Uuid
+  projectId   String?      @map("project_id") @db.Uuid
+  milestoneId String?      @map("milestone_id") @db.Uuid
+  parentId    String?      @map("parent_id") @db.Uuid
+  createdById String       @map("created_by_id") @db.Uuid
+  assigneeId  String?      @map("assignee_id") @db.Uuid
+
+  identifier  String       @db.VarChar(50)   // e.g. "TASK-101"
+  title       String       @db.VarChar(255)
+  description String?      @db.Text
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(NONE)
+  dueDate     DateTime?    @map("due_date")
+
+  // Relations
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  milestone   Milestone?         @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  parent      Task?              @relation("SubTasks", fields: [parentId], references: [id])
+  subtasks    Task[]             @relation("SubTasks")
+  createdBy   User               @relation("TaskCreator", fields: [createdById], references: [id])
+  assignee    User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  comments    TaskComment[]
+  labels      TaskLabel[]
+  blockedBy   TaskDependency[]   @relation("BlockedTask")
+  blocks      TaskDependency[]   @relation("BlockingTask")
+
+  @@unique([workspaceId, identifier])
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  taskId      String   @map("task_id") @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+
+  body        String   @db.Text
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+model Label {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String      @map("workspace_id") @db.Uuid
+  name        String      @db.VarChar(100)
+  color       String      @default("#6366f1") @db.VarChar(20)
+
+  tasks       TaskLabel[]
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@map("labels")
+}
+
+model TaskLabel {
+  taskId  String @map("task_id") @db.Uuid
+  labelId String @map("label_id") @db.Uuid
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@map("task_labels")
+}
+
+model TaskDependency {
+  blockingTaskId String @map("blocking_task_id") @db.Uuid
+  blockedTaskId  String @map("blocked_task_id") @db.Uuid
+
+  blockingTask Task @relation("BlockingTask", fields: [blockingTaskId], references: [id], onDelete: Cascade)
+  blockedTask  Task @relation("BlockedTask", fields: [blockedTaskId], references: [id], onDelete: Cascade)
+
+  @@id([blockingTaskId, blockedTaskId])
+  @@map("task_dependencies")
+}

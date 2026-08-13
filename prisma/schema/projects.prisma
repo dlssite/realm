@@ -1,0 +1,89 @@
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+
+  @@map("project_status")
+}
+
+model Project {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+  workspaceId String        @map("workspace_id") @db.Uuid
+  createdById String        @map("created_by_id") @db.Uuid
+  teamId      String?       @map("team_id") @db.Uuid
+
+  name        String        @db.VarChar(255)
+  identifier  String        @db.VarChar(50) // e.g. "PROJ-1"
+  description String?       @db.Text
+  status      ProjectStatus @default(PLANNED)
+
+  // Relations
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation(fields: [createdById], references: [id])
+  team       Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  members    ProjectMember[]
+  milestones Milestone[]
+  goals      Goal[]
+  tasks      Task[]
+  channels       Channel[]
+  wikiPages      WikiPage[]
+  fileRecords    FileRecord[]
+  calendarEvents CalendarEvent[]
+
+  @@unique([workspaceId, identifier])
+  @@index([workspaceId])
+  @@index([teamId])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @default("MEMBER") // "LEAD" | "MEMBER"
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Milestone {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  projectId   String    @map("project_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+
+  name        String    @db.VarChar(255)
+  dueDate     DateTime? @map("due_date")
+  isCompleted Boolean   @default(false) @map("is_completed")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("milestones")
+}
+
+model Goal {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  projectId   String   @map("project_id") @db.Uuid
+  createdById String   @map("created_by_id") @db.Uuid
+
+  name        String   @db.VarChar(255)
+  targetValue Float    @default(100.0) @map("target_value")
+  currentValue Float   @default(0.0) @map("current_value")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}

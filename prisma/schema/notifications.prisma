@@ -1,0 +1,62 @@
+// Notifications schema
+// Personal, directed alerts — per-user, not workspace-wide.
+// Delivered in real-time via SSE; persisted here for the inbox page.
+
+enum NotificationType {
+  // Task events
+  TASK_ASSIGNED          // Someone assigned a task to you
+  TASK_MENTIONED         // You were @mentioned in a task or comment
+  TASK_STATUS_CHANGED    // A task you own/watch changed status
+  TASK_COMMENT_ADDED     // Someone commented on a task you own/are assigned to
+  TASK_DUE_SOON          // A task assigned to you is due within 24 h (future: scheduled job)
+
+  // Project events
+  PROJECT_MEMBER_ADDED   // You were added to a project
+  MILESTONE_COMPLETED    // A milestone was completed on a project you're on
+
+  // Workspace events
+  WORKSPACE_INVITED      // You were invited to a workspace
+  MEMBER_ROLE_CHANGED    // Your role in a workspace was changed
+  TEAM_MEMBER_ADDED      // You were added to a team
+
+  @@map("notification_type")
+}
+
+model Notification {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Who receives this notification
+  recipientId String           @map("recipient_id") @db.Uuid
+
+  // Workspace context (nullable for workspace-level events like invites)
+  workspaceId String?          @map("workspace_id") @db.Uuid
+
+  type        NotificationType
+
+  // Short headline shown in the Bell popover  e.g. "Alex assigned you a task"
+  title       String           @db.VarChar(255)
+  // Optional longer description shown in the full inbox
+  body        String?          @db.VarChar(1000)
+
+  // The resource the notification is about — used to build deep links
+  entityType  String           @map("entity_type")  @db.VarChar(50)
+  entityId    String           @map("entity_id")    @db.Uuid
+  entityTitle String?          @map("entity_title") @db.VarChar(255)
+
+  // Actor who triggered the notification
+  actorId     String?          @map("actor_id")     @db.Uuid
+  actorName   String?          @map("actor_name")   @db.VarChar(255)
+
+  // State
+  isRead      Boolean          @default(false) @map("is_read")
+  readAt      DateTime?        @map("read_at")
+
+  // Relations
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead, createdAt(sort: Desc)])
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([workspaceId])
+  @@map("notifications")
+}

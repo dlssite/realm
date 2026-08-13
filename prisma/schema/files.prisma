@@ -1,0 +1,51 @@
+// ── Files Module Schema ───────────────────────────────────────────────────────
+// Stores file metadata. Actual bytes live in MinIO S3.
+// Upload flow: presign → direct-to-MinIO upload → confirm → record created here.
+
+model FileRecord {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  workspaceId String  @map("workspace_id") @db.Uuid
+  uploadedById String @map("uploaded_by_id") @db.Uuid
+
+  // Optional scoping — file can belong to a project
+  projectId   String? @map("project_id") @db.Uuid
+
+  // Storage
+  storageKey  String  @map("storage_key") @db.VarChar(1024) // MinIO object key
+  bucket      String  @db.VarChar(255)
+  filename    String  @db.VarChar(512)   // original filename shown to users
+  contentType String  @map("content_type") @db.VarChar(255)
+  sizeBytes   BigInt  @map("size_bytes")
+
+  // Relations
+  workspace  Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploadedBy User           @relation("UploadedFiles", fields: [uploadedById], references: [id])
+  project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  versions   FileVersion[]
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([deletedAt])
+  @@map("file_records")
+}
+
+model FileVersion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  fileRecordId String   @map("file_record_id") @db.Uuid
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+
+  storageKey   String @map("storage_key") @db.VarChar(1024)
+  sizeBytes    BigInt @map("size_bytes")
+  versionLabel String @default("v1") @map("version_label") @db.VarChar(50)
+
+  fileRecord FileRecord @relation(fields: [fileRecordId], references: [id], onDelete: Cascade)
+  uploadedBy User       @relation("FileVersionUploads", fields: [uploadedById], references: [id])
+
+  @@index([fileRecordId])
+  @@map("file_versions")
+}

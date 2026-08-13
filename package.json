@@ -1,0 +1,33 @@
+{
+  "name": "realm-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rimraf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "prisma:build": "node ./scripts/merge-prisma.js",
+    "prisma:generate": "pnpm run prisma:build && pnpm exec prisma generate --schema prisma/schema.prisma",
+    "prisma:push": "pnpm run prisma:build && pnpm exec prisma db push --schema prisma/schema.prisma --skip-generate",
+    "prisma:push:force": "pnpm run prisma:build && pnpm exec prisma db push --schema prisma/schema.prisma --accept-data-loss --skip-generate",
+    "prisma:migrate": "pnpm run prisma:build && pnpm exec prisma migrate dev --name init --schema prisma/schema.prisma",
+    "prisma:migrate:create": "pnpm run prisma:build && pnpm exec prisma migrate dev --create-only --schema prisma/schema.prisma",
+    "prisma:studio": "pnpm run prisma:build && pnpm exec prisma studio --schema prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prisma": "5.17.0",
+    "turbo": "^2.0.12",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.17.0",
+    "dotenv": "^17.4.2"
+  }
+}

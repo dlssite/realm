@@ -1,0 +1,22 @@
+.slash-suggestion {
+  background: #0b0b0d;
+  border: 1px solid #1f1f23;
+  border-radius: 8px;
+  padding: 8px 6px;
+  color: #e6eef8;
+  font-size: 13px;
+  min-width: 180px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+}
+.slash-suggestion .suggestion-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slash-suggestion .suggestion-item:hover,
+.slash-suggestion .suggestion-item.selected {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}

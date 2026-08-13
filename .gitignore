@@ -1,0 +1,31 @@
+# Node dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Prisma & Database
+prisma/dev.db
+prisma/dev.db-journal
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
