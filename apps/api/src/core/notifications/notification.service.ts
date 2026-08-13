@@ -153,8 +153,16 @@ export const NotificationService = {
 
     const hasNextPage = items.length > limit;
     const page = hasNextPage ? items.slice(0, limit) : items;
+
+    // Serialize Date objects to ISO strings so the JSON response is clean
+    const serialized = page.map((n) => ({
+      ...n,
+      createdAt: n.createdAt.toISOString(),
+      readAt:    n.readAt ? n.readAt.toISOString() : null,
+    }));
+
     return {
-      items: page,
+      items:      serialized,
       nextCursor: hasNextPage ? page[page.length - 1]!.createdAt.toISOString() : null,
       hasNextPage,
     };
