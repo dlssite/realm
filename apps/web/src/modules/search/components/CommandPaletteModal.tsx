@@ -22,6 +22,20 @@ export function CommandPaletteModal({ isOpen, onClose }: Props) {
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) {
+      setQuery('');
+      setResults({ tasks: [], projects: [], wikiPages: [] });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (!isOpen || !query.trim() || !workspace || !token) {
       setResults({ tasks: [], projects: [], wikiPages: [] });
       return;
@@ -55,8 +69,14 @@ export function CommandPaletteModal({ isOpen, onClose }: Props) {
   const totalHits = results.tasks.length + results.projects.length + results.wikiPages.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/75 backdrop-blur-xs p-4">
-      <div className="w-full max-w-xl bg-[#0c0c0e] border border-[#1f1f23] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/75 backdrop-blur-xs p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-xl bg-[#0c0c0e] border border-[#1f1f23] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Search Header */}
         <div className="flex items-center px-4 py-3 border-b border-[#1f1f23] bg-[#09090b]">
           <Search className="w-4 h-4 text-[#7c3aed] mr-3" />
